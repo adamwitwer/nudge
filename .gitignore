@@ -1,0 +1,20 @@
+# secrets / local config — never commit
+config.toml
+token.json
+credentials.json
+client_secret*.json
+.env
+*.db
+*.sqlite
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+.DS_Store

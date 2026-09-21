@@ -1,0 +1,195 @@
+nudge: Google Calendar reminders -> Discord / Telegram
+
+This simple app sends reminders based on GCal events.
+
+The basic idea is that there is a service running on the Raspberry Pi, which uses GCal reminder settings to trigger notifications to Discord or Telegram. (NB: This is a point of discussion in figuring out the requirements).
+
+The notification trigger times would be determined by the GCal even settings. So for example, if the event has a notification setting of one hour before the event, that's when the notification would trigger. Events can have multiple notification triggers.
+
+The messages would need to be nicely formatted and might include emoji and other text-based touches.
+
+================================================================================
+PROJECT PLAN  (drafted 2026-09-21)
+================================================================================
+
+1. FEASIBILITY SUMMARY
+----------------------
+Feasible, and small. The Google Calendar API gives us each event's reminder
+settings, a Raspberry Pi can easily run a small polling service, and both
+Discord and Telegram accept formatted messages over a plain HTTPS POST.
+Estimated effort: a few evenings for a solid MVP.
+
+Key facts and gotchas that shape the design:
+
+a) Reading reminder settings. events.list returns `reminders` on each event:
+   - `useDefault: true`  -> the calendar's default reminders apply. These are
+     NOT on the event; fetch them from calendarList.get(calendarId)
+     .defaultReminders.
+   - `overrides: [{method: "popup"|"email", minutes: N}, ...]` -> the
+     event's own reminders (max 5 per event, max 40320 min = 4 weeks).
+   - For ALL-DAY events, `minutes` counts back from midnight at the start of
+     the event date, in the calendar's time zone. For example, "day before at
+     5pm" is stored as 420.
+
+b) Reminders belong to each user. Every user has their own reminder settings
+   for a shared event. So we must read the calendar AS YOU (OAuth user
+   credentials). A service account with the calendar shared to it would see
+   its own reminders (none), not yours. That rules out the usual
+   "service account on a server" shortcut.
+
+c) Refresh tokens expire after 7 days in "Testing" mode. This matters most on
+   a headless Pi. If the Google Cloud OAuth consent screen is left in
+   "Testing" status, refresh tokens expire after 7 days and the service
+   silently dies once a week. Fix: set the app to "In production". An
+   unverified personal app is fine; you'll click through an "unverified app"
+   warning once. Use only the read-only scope
+   (calendar.readonly, or calendar.events.readonly + calendarlist.readonly).
+
+d) Headless auth. Run the one-time OAuth consent flow on your laptop, then
+   copy the resulting token file to the Pi. Alternatively, run it on the Pi
+   through an SSH port-forward to the loopback redirect.
+
+e) Polling, not push. The Calendar push API (events.watch) needs a public
+   HTTPS webhook, which is overkill for a Pi on a home network. Polling every
+   few minutes stays far inside the free quota (1M requests/day).
+
+f) Recurring events. Use `singleEvents=true` so each recurrence comes back as
+   its own instance with its own start time and reminders.
+
+g) Clock accuracy. The Pi has no RTC, so make sure NTP sync
+   (systemd-timesyncd) is on. Otherwise notifications fire at the wrong time
+   after a reboot.
+
+2. DISCORD vs TELEGRAM (the open question)
+------------------------------------------
+Discord (webhook)
+  + Easiest possible setup: create a webhook in a channel, POST JSON to it.
+    No bot, no tokens beyond the URL.
+  + Rich "embeds": colored side bar, title, fields, timestamps, which suit
+    nicely formatted reminders.
+  - Phone push notifications depend on your Discord notification settings for
+    that server/channel. Discord can feel noisy or easy to miss.
+  - One-way only. No interactive buttons without a full bot.
+
+Telegram (bot)
+  + Very reliable, prompt phone push notifications. Feels like a text
+    message.
+  + A path to interactivity later (inline buttons like "Snooze 10 min" or
+    "Done"). That needs the bot to also poll for updates.
+  - Slightly more setup: create a bot with @BotFather, message it once, look
+    up your chat_id.
+  - MarkdownV2 escaping is fiddly. Use `parse_mode=HTML` instead.
+
+Recommendation: build a small Notifier interface and ship BOTH early.
+Each is about 30 lines. If you want to pick one for the MVP, use Telegram if
+phone push reliability matters most, or Discord if you already live in
+Discord and want the richer visual formatting.
+
+3. REQUIREMENTS DECISIONS (resolved 2026-09-21)
+-----------------------------------------------
+[x] Calendars: a configured list of calendar IDs (not primary-only).
+[x] Reminder method: popup only. Email reminders are ignored. Events that
+    should notify get popup reminders set in GCal.
+[x] Duplicate GCal notifications: acceptable. The user will disable
+    Google's notifications or live with them. No action for the app.
+[x] Declined events: skip them. This will rarely come up, because the target
+    use is a personal calendar, not a meeting-heavy work calendar.
+[x] Missed reminders: send if within a 15-minute grace window and mark them
+    "late"; otherwise skip and log. The Pi is expected to be always on.
+[x] Message content: event title only, to start. No description, location,
+    or links. Keep it very simple.
+[x] Quiet hours: not needed.
+[ ] Discord vs Telegram: still open (see section 2). Default plan: the
+    Notifier interface, with both implemented.
+[x] Repo: public GitHub repo under the user's account. Secrets must never
+    be committed (see section 4, Deployment).
+
+4. ARCHITECTURE
+---------------
+Language/runtime: Python 3.11+ (preinstalled on Raspberry Pi OS Bookworm).
+Libraries: google-api-python-client, google-auth-oauthlib, httpx (or
+requests), tomllib (stdlib) for config. No web framework needed.
+
+Components:
+  config.toml        calendars, notifier(s), poll interval, grace window,
+                     lookahead window, emoji rules
+  gcal.py            auth + fetch upcoming event instances and calendar
+                     default reminders
+  schedule.py        expand events -> list of Trigger(event_id, start,
+                     fire_at, minutes_before). Handles useDefault, all-day
+                     math, time zones, declined events.
+  store.py           SQLite: table sent(trigger_key PRIMARY KEY, sent_at).
+                     trigger_key = f"{calendar_id}:{event_id}:{start}:{minutes}"
+                     If an event is moved, its start changes, the key changes,
+                     and it re-fires correctly.
+  notifiers/         base.Notifier.send(Trigger, Event);
+                     discord.py (webhook embeds), telegram.py (HTML parse mode)
+  format.py          message templating plus emoji picks
+  main.py            main loop
+
+Main loop (simple, and survives restarts):
+  every POLL_INTERVAL (default 5 min):
+      fetch events from now - grace to now + 4 weeks (max reminder range)
+      rebuild the in-memory trigger list
+  every 30 s:
+      for each trigger with fire_at <= now and key not in `sent`:
+          if now - fire_at <= GRACE: send; record in `sent`
+          else: record as skipped (log it)
+  Deleted or cancelled events disappear on the next poll, so nothing fires.
+  Edited reminder times are picked up within one poll interval.
+
+Deployment: systemd unit (Restart=always), running as a non-root user, with
+logs going to journald. Secrets (token.json, webhook URL, bot token) live in
+~/.config/nudge/ with chmod 600.
+Public repo hygiene: commit only config.example.toml. .gitignore covers
+config.toml, token.json, credentials.json, *.db, and .env.
+
+5. MESSAGE FORMAT (MVP: title only)
+-----------------------------------
+  ⏰ Dentist appointment · in 1 hour
+  ⏰ Mom's birthday · tomorrow
+
+  - The lead time wording comes from minutes_before ("in 10 minutes",
+    "in 1 hour", "tomorrow at 9 AM"). All-day events say "today" or
+    "tomorrow".
+  - Emoji: a default ⏰, with optional keyword rules in config later
+    (🦷 dentist, 🎂 birthday, 💊 meds ...).
+  - Possible later additions: start time, location, Meet link.
+
+6. MILESTONES
+-------------
+M0  Setup (≈1 hr)
+    - Google Cloud project, enable Calendar API, create an OAuth client of
+      type "Desktop app", set the consent screen to "In production"
+    - Create the Discord webhook and/or Telegram bot, and find the chat_id
+M1  Calendar read spike (≈1–2 hrs)
+    - Script that authenticates and prints upcoming events with their
+      effective reminders (including defaults and all-day math). Validate
+      against what the GCal UI shows for a handful of real events.
+M2  Trigger engine + store (≈2–3 hrs)
+    - schedule.py + store.py + main loop, printing to the console instead of
+      sending
+    - Unit tests for trigger computation: timed events, all-day events,
+      useDefault, multiple reminders, DST boundary, moved events, declined
+      events, grace window
+M3  Notifiers + formatting (≈2 hrs)
+    - Discord and Telegram senders, message templates, emoji rules
+    - A `--test` CLI flag that sends a sample notification
+M4  Pi deployment (≈1 hr)
+    - Install into a venv, copy the token, add the systemd unit, confirm NTP
+    - Run for a week alongside the GCal native reminders and compare
+M5  Hardening (optional, as needed)
+    - Retry with backoff on network or Discord/Telegram errors
+    - Alert (via the notifier) if Google auth fails, so the service can't die
+      silently
+    - Daily heartbeat or "today's agenda" digest message (nice-to-have)
+    - Telegram inline "Snooze" buttons (stretch)
+
+7. RISKS
+--------
+- Refresh token revoked or expired -> silent failure. Mitigate with (c) above
+  plus the M5 auth-failure alert.
+- Pi SD card corruption -> keep state tiny (SQLite, which is rebuildable),
+  keep config in git, and back up token.json.
+- Home network outage -> late or skipped reminders. The grace window limits
+  the damage. Acceptable for a personal tool.
