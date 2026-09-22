@@ -33,3 +33,16 @@ def test_telegram_optional_and_parsed(tmp_path):
 def test_rejects_placeholder_bot_token(tmp_path):
     with pytest.raises(ConfigError):
         load(write(tmp_path, 'calendars = ["a"]\n[telegram]\nbot_token = "PASTE_BOT_TOKEN_HERE"\n'))
+
+
+def test_emoji_config_overrides_and_extends_builtins(tmp_path):
+    cfg = load(write(tmp_path, 'calendars = ["a"]\n[emoji]\ndefault = "🔔"\n[emoji.keywords]\nTrash = "🚮"\nsoccer = "⚽"\n'))
+    assert cfg.emoji.pick("Trash Night") == "🚮"   # user entry beats the built-in
+    assert cfg.emoji.pick("Soccer practice") == "⚽"
+    assert cfg.emoji.pick("Birthday") == "🎂"      # built-ins still apply
+    assert cfg.emoji.pick("Something else") == "🔔"
+
+
+def test_emoji_builtins_can_be_disabled(tmp_path):
+    cfg = load(write(tmp_path, 'calendars = ["a"]\n[emoji]\nbuiltin = false\n'))
+    assert cfg.emoji.pick("Birthday") == "⏰"

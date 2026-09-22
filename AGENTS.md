@@ -20,8 +20,8 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
   at 3:50 PM that day.
 - Telegram was added 2026-09-22 (`@adam_nudge_bot`). Both destinations run
   in parallel for a trial week; afterwards, ask the user which one to keep.
-- Candidates for next: Telegram notifier, daily agenda digest, emoji rules,
-  and popups on the recurring Trash Night / Yard Trash events.
+- Candidates for next: Telegram snooze buttons (agreed as next), a daily
+  agenda digest, and popups on the recurring Trash Night / Yard Trash events.
 
 ## Working agreements
 
@@ -62,6 +62,7 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-22 | Emoji keyword rules: about 20 built-ins, overridable in config, word-start matching (so "Recall" doesn't match "call"). Next up, as agreed with the user: **Telegram snooze buttons**. Trial week of Discord and Telegram runs until about 2026-09-29. | done |
 | 2026-09-22 | Telegram notifier added. Messages are now structured (`format.Message`) and rendered per destination (Discord markdown, Telegram HTML). The dedupe key gained a `|notifier` suffix. Existing rows no longer match, which was harmless at deploy time because no trigger was inside the grace window. | done |
 | 2026-09-21 | M4: deployed to the Pi as `nudge.service` (enabled, active). Verified `upcoming` and `test` from the Pi. First live check: TEST EVENT FOR CLAUDE popup at 3:50 PM ET on 2026-09-22. Only one machine should run `nudge run`, or you get double sends. | done |
 | 2026-09-21 | M2+M3 done: SQLite dedupe store, 30 s tick / 5 min poll loop, Discord webhook (mentions disabled so a title can't ping @everyone), `nudge test` and `nudge run`. The auth-failure alert (from M5) is also in. Sample message delivered to Discord. | done |

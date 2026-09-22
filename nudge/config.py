@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 
+from .format import DEFAULT_KEYWORDS, EMOJI, EmojiRules
 from .gcal import CONFIG_DIR
 
 CONFIG_FILE = CONFIG_DIR / "config.toml"
@@ -24,6 +25,7 @@ class Config:
     discord_webhook_url: str | None
     telegram_bot_token: str | None = None
     telegram_chat_id: int | str | None = None
+    emoji: EmojiRules = field(default_factory=EmojiRules)
 
 
 def load(path: Path = CONFIG_FILE) -> Config:
@@ -48,6 +50,16 @@ def load(path: Path = CONFIG_FILE) -> Config:
         raise ConfigError(f"{path}: telegram.bot_token doesn't look like a bot token")
     chat_id = telegram.get("chat_id")
 
+    emoji_cfg = raw.get("emoji", {})
+    user_keywords = {k.lower(): v for k, v in emoji_cfg.get("keywords", {}).items()}
+    if not all(isinstance(v, str) and v for v in user_keywords.values()):
+        raise ConfigError(f"{path}: emoji.keywords values must be non-empty strings")
+    builtin = DEFAULT_KEYWORDS if emoji_cfg.get("builtin", True) else {}
+    emoji = EmojiRules(
+        keywords={**user_keywords, **{k: v for k, v in builtin.items() if k not in user_keywords}},
+        default=emoji_cfg.get("default", EMOJI),
+    )
+
     return Config(
         calendars=calendars,
         poll=timedelta(minutes=raw.get("poll_minutes", 5)),
@@ -55,4 +67,5 @@ def load(path: Path = CONFIG_FILE) -> Config:
         discord_webhook_url=webhook,
         telegram_bot_token=token,
         telegram_chat_id=chat_id,
+        emoji=emoji,
     )

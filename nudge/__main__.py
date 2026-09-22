@@ -40,6 +40,7 @@ def cmd_upcoming(args) -> None:
         cal_ids = [c["id"] for c in gcal.list_calendars(svc) if c.get("selected")]
     now = datetime.now(timezone.utc)
     tz = ZoneInfo(gcal.user_timezone(svc))
+    rules = config.load().emoji if config.CONFIG_FILE.exists() else format.EmojiRules()
     for cal_id in cal_ids:
         cal = gcal.get_calendar(svc, cal_id)
         defaults = cal.get("defaultReminders", [])
@@ -48,7 +49,8 @@ def cmd_upcoming(args) -> None:
         for ev in events:
             triggers = triggers_for_event(ev, cal_id, defaults, tz)
             when = ev["start"].get("date") or datetime.fromisoformat(ev["start"]["dateTime"]).astimezone(tz).strftime(FMT)
-            print(f"- {when}  {ev.get('summary', '(no title)')}")
+            title = ev.get("summary", "(no title)")
+            print(f"- {when}  {rules.pick(title)} {title}")
             print(f"    raw reminders: {ev.get('reminders')}")
             if not triggers:
                 print("    -> no popup triggers")

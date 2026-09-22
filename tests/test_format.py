@@ -40,7 +40,7 @@ def test_all_day():
 
 def test_message_is_structured():
     t = Trigger("c", "e", "Dentist", NOW + timedelta(hours=1), False, 60, NOW)
-    assert message(t, NOW, NY) == Message("Dentist", "in 1 hour")
+    assert message(t, NOW, NY) == Message("Dentist", "in 1 hour", emoji="🦷")
     assert message(t, NOW, NY, late=True).late
 
 
@@ -54,3 +54,22 @@ def test_html_rendering_escapes_title_and_marks_late():
     assert as_html(Message("Tom & Jerry <3", "tomorrow")) == "⏰ <b>Tom &amp; Jerry &lt;3</b> · tomorrow"
     assert as_html(Message("x", "now", late=True)) == "⏰ <b>x</b> · now <i>(late)</i>"
     assert as_html(Message("alert", emoji="⚠️")) == "⚠️ <b>alert</b>"
+
+
+def test_emoji_rules_match_word_starts_case_insensitively():
+    from nudge.format import EmojiRules
+
+    r = EmojiRules()
+    assert r.pick("[Reminder] Trash Night") == "🗑️"
+    assert r.pick("Mom's BIRTHDAY") == "🎂"
+    assert r.pick("Birthdays at school") == "🎂"
+    assert r.pick("Recall notice") == "⏰"  # "call" must start a word
+    assert r.pick("✨ nudge test ✨") == "⏰"
+
+
+def test_message_uses_emoji_rules():
+    from nudge.format import EmojiRules
+
+    t = Trigger("c", "e", "Dentist", NOW + timedelta(hours=1), False, 60, NOW)
+    assert message(t, NOW, NY).emoji == "🦷"
+    assert message(t, NOW, NY, rules=EmojiRules({}, "🔔")).emoji == "🔔"

@@ -8,13 +8,51 @@ from __future__ import annotations
 
 import html
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from .triggers import Trigger
 
 EMOJI = "⏰"
+
+# Built-in keyword -> emoji rules. Config [emoji.keywords] entries are checked
+# first and can override these. Matching is case-insensitive at the start of
+# a word, so "birthday" matches "Birthdays!" but "call" doesn't match "Recall".
+DEFAULT_KEYWORDS = {
+    "trash": "🗑️",
+    "garbage": "🗑️",
+    "recycling": "♻️",
+    "birthday": "🎂",
+    "anniversary": "💐",
+    "dentist": "🦷",
+    "doctor": "🩺",
+    "vet": "🐾",
+    "meds": "💊",
+    "pill": "💊",
+    "flight": "✈️",
+    "haircut": "💇",
+    "gym": "🏋️",
+    "workout": "🏋️",
+    "call": "📞",
+    "dinner": "🍽️",
+    "lunch": "🍽️",
+    "breakfast": "🍽️",
+    "pay": "💳",
+    "bill": "💳",
+}
+
+
+@dataclass(frozen=True)
+class EmojiRules:
+    keywords: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_KEYWORDS))
+    default: str = EMOJI
+
+    def pick(self, title: str) -> str:
+        for keyword, emoji in self.keywords.items():
+            if re.search(rf"\b{re.escape(keyword)}", title, re.IGNORECASE):
+                return emoji
+        return self.default
 RELATIVE_UNDER = timedelta(hours=6)  # "in 2 hours" below this, "today at 4:00 PM" above
 
 
@@ -87,5 +125,8 @@ def as_html(m: Message) -> str:
     return text
 
 
-def message(trigger: Trigger, now: datetime, tz: ZoneInfo, late: bool = False) -> Message:
-    return Message(trigger.title, lead_text(trigger.start, trigger.all_day, now, tz), late)
+def message(
+    trigger: Trigger, now: datetime, tz: ZoneInfo, late: bool = False, rules: EmojiRules = EmojiRules()
+) -> Message:
+    lead = lead_text(trigger.start, trigger.all_day, now, tz)
+    return Message(trigger.title, lead, late, emoji=rules.pick(trigger.title))

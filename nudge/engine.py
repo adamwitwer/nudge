@@ -40,6 +40,7 @@ def process_due(
     now: datetime,
     tz: ZoneInfo,
     grace: timedelta,
+    rules: format.EmojiRules = format.EmojiRules(),
 ) -> None:
     """Send due triggers. Tracked per notifier, so one failing is retried alone."""
     for t in sorted(triggers, key=lambda t: t.fire_at):
@@ -54,7 +55,7 @@ def process_due(
             for n in pending:
                 store.mark(f"{t.key}|{n.name}", "skipped", now)
             continue
-        msg = format.message(t, now, tz, late=lateness > LATE_AFTER)
+        msg = format.message(t, now, tz, late=lateness > LATE_AFTER, rules=rules)
         for n in pending:
             try:
                 n.send(msg)
@@ -97,7 +98,7 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
                 log.warning("poll failed: %s", e)
                 last_poll = now
         if tz is not None:
-            process_due(triggers, store, notifiers, now, tz, cfg.grace)
+            process_due(triggers, store, notifiers, now, tz, cfg.grace, cfg.emoji)
         time.sleep(TICK_SECONDS)
 
 

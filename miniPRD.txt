@@ -135,8 +135,8 @@ Package layout (run as `python -m nudge <command>`):
                         A moved event gets a new key and fires again. The
                         per-notifier suffix means a failed destination is
                         retried alone.
-  nudge/format.py       structured Message(title, detail, late, emoji) plus
-                        renderers: as_markdown (Discord), as_html (Telegram)
+  nudge/format.py       structured Message(title, detail, late, emoji),
+                        EmojiRules (keyword -> emoji), renderers: as_markdown (Discord), as_html (Telegram)
   nudge/notifiers/      Notifier protocol; discord.py (webhook, mentions
                         disabled, 429 retry); telegram.py (Bot API
                         sendMessage, parse_mode=HTML, 429 retry; errors
@@ -187,8 +187,12 @@ systemctl restart nudge. Only the Pi runs `nudge run`.
   ⏰ **Dentist appointment** · in 5 minutes _(late)_
 
   - The wording is computed at send time from the event start.
-  - Ideas for later: emoji keyword rules (🦷 dentist, 🎂 birthday, 💊 meds),
-    start time, location.
+  - Emoji (2026-09-22): keyword rules in format.EmojiRules. There are
+    built-ins (🗑️ trash, 🎂 birthday, 🦷 dentist, 💊 meds, ...), and config
+    [emoji.keywords] can override or extend them. Matching is
+    case-insensitive at a word start; the fallback is ⏰.
+    `nudge upcoming` previews the emoji.
+  - Ideas for later: start time, location.
 
 6. MILESTONES
 -------------
@@ -219,7 +223,7 @@ M5  Hardening / extensions (as needed)
       (2026-09-22)
     - [ ] Daily "today's agenda" digest message (nice-to-have)
     - [ ] Telegram inline "Snooze" buttons (stretch)
-    - [ ] Emoji keyword rules
+    - [x] Emoji keyword rules (2026-09-22)
 
 7. RISKS
 --------

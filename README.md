@@ -5,8 +5,11 @@ reminders and sends them to Discord and/or Telegram at the times set in
 GCal.
 
 ```
-⏰ **Trash Night** · in 1 hour
+🗑️ **Trash Night** · in 1 hour
 ```
+
+The emoji comes from keywords in the title (trash 🗑️, birthday 🎂,
+dentist 🦷, ...). You can add your own under `[emoji.keywords]` in the config.
 
 ## Setup
 
