@@ -234,10 +234,11 @@ M3  Notifiers + formatting [DONE]
 M4  Pi deployment [DONE 2026-09-21]
     - Running as nudge.service on the Pi
     - [x] First live reminder on 2026-09-22 (9:50 AM Personal): delivered
-    - [ ] 3:50 PM Family reminder, the same day
+    - [x] 3:50 PM Family reminder (2026-09-22): sent to Discord 15:50:14 and
+      Telegram 15:50:15, both arrived
     - [ ] Run for a week alongside GCal's native notifications and compare
-    - [ ] Add popup notifications to the recurring Trash Night / Yard Trash
-      events, and consider default popups per calendar
+    - [x] Real recurring events now carry popups: Garbage, Recycling, Bulk
+      Trash, Yard Trash, HVAC/water filters, membrane
 M5  Hardening / extensions (as needed)
     - [x] Alert via the notifier if Google auth fails
     - [x] Retry on Discord 429 and on send failure (next tick, within grace)

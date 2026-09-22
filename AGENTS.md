@@ -20,9 +20,10 @@ keyword emoji, Telegram snooze buttons (10 min / 1 hour / Done), and a daily
 popups to their real events (Garbage, Recycling, Bulk Trash, Yard Trash,
 filters, membrane). There are 19 upcoming triggers.
 
-**First thing next session:** check that `TEST EVENT FOR CLAUDE` fired at
-3:50 PM on 2026-09-22 (`journalctl -u nudge --since "2026-09-22 15:45"`), and
-that tomorrow's 8:30 AM audit ran. Then tick the miniPRD M4 box.
+**Verified 2026-09-22:** `TEST EVENT FOR CLAUDE` was sent to Discord at
+15:50:14 and Telegram at 15:50:15, and both arrived. No restarts, no errors.
+M4 is fully ticked. Still to confirm: the first *scheduled* 8:30 AM audit
+(2026-09-23; today's ran at 12:32 as a catch-up).
 
 **Next up (the user's request): an identity for the app.** A logo/avatar for
 the Telegram bot and the Discord webhook. Ideas to bring:
@@ -99,7 +100,7 @@ first. Status is one of: open / adopted / declined / done.
 | 2026-09-21 | M2+M3 done: SQLite dedupe store, 30 s tick / 5 min poll loop, Discord webhook (mentions disabled so a title can't ping @everyone), `nudge test` and `nudge run`. The auth-failure alert (from M5) is also in. Sample message delivered to Discord. | done |
 | 2026-09-21 | With more than one notifier, a send failure on the second means a retry re-sends on the first. That's fine while Discord is the only notifier. Track per-notifier sent state when Telegram is added. | done (key suffix `|notifier`) |
 | 2026-09-21 | M1 verified against the real API: popup and email overrides come back exactly as set in GCal. The Family calendar's own tz is UTC, so display and all-day math use the **account** tz (`settings.get('timezone')`) instead. | done |
-| 2026-09-21 | Existing recurring events (Trash Night, Yard Trash) use **email** reminders only, so nudge won't fire for them until popups are added. | open: user to update events |
+| 2026-09-21 | Existing recurring events (Trash Night, Yard Trash) use **email** reminders only, so nudge won't fire for them until popups are added. | done (user added popups 2026-09-22) |
 | 2026-09-21 | Tested the secret iCal feed as an alternative to OAuth. **Rejected:** a test event with popup and email reminders came through with no VALARMs, and 0 of 23 events on the family calendar had reminders. The feed can't be trusted for reminder data. Proceed with OAuth (with branding and PRIVACY.md filled in). | declined |
 | 2026-09-21 | Set the Google OAuth consent screen to "In production", not "Testing". Otherwise refresh tokens expire after 7 days and the Pi fails silently. | done |
 | 2026-09-21 | Read the calendar as the user (OAuth), not with a service account. Reminders are per-user, so a service account would see none. | adopted |
