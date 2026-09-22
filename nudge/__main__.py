@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from . import config, engine, format, gcal, notifiers
+from . import audit, config, engine, format, gcal, notifiers
 from .store import Store
 from .triggers import Trigger, triggers_for_event
 
@@ -82,6 +82,23 @@ def cmd_test(args) -> None:
         print(f"sent via {n.name}: {msg.title} · {msg.detail}")
 
 
+def cmd_audit(args) -> None:
+    cfg = config.load()
+    svc = gcal.service()
+    tz = ZoneInfo(gcal.user_timezone(svc))
+    now = datetime.now(timezone.utc)
+    events, defaults = audit.collect(svc, cfg.calendars, tz, now, args.days or cfg.audit.days)
+    findings = audit.find_missing(events, defaults, tz, cfg.audit.tag)
+    msg = audit.build_message(findings, tz)
+    print(f"{msg.emoji} {msg.title}")
+    for line in msg.lines:
+        print(f"  • {line}")
+    if args.send and findings:
+        for n in [n for n in _notifiers(cfg) if n.name in cfg.audit.via]:
+            n.send(msg)
+            print(f"sent via {n.name}")
+
+
 def cmd_telegram_chats(args) -> None:
     from .notifiers.telegram import recent_chats
 
@@ -120,6 +137,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("test", help="send a sample notification")
     p.set_defaults(func=cmd_test)
+
+    p = sub.add_parser("audit", help="list upcoming events with no popup notification")
+    p.add_argument("--days", type=int, help="look-ahead (default: audit.days, 14)")
+    p.add_argument("--send", action="store_true", help="also send the list (via audit.via)")
+    p.set_defaults(func=cmd_audit)
 
     p = sub.add_parser("telegram-chats", help="show chat IDs that have messaged your bot")
     p.set_defaults(func=cmd_telegram_chats)

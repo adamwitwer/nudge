@@ -13,7 +13,8 @@ PROJECT PLAN  (drafted 2026-09-21)
 ================================================================================
 
 STATUS (2026-09-22): Live on the Pi (nudge.service), sending to Discord AND
-Telegram, with keyword emoji and Telegram snooze buttons. M0-M4 are done. The first live reminder (9:50 AM, 2026-09-22) was
+Telegram, with keyword emoji, Telegram snooze buttons, and a daily 8:30 AM
+"missing notification" audit. M0-M4 are done. The first live reminder (9:50 AM, 2026-09-22) was
 delivered. Telegram was added the same day. Next: a week-long trial of
 both, then drop whichever gets ignored.
 Repo: https://github.com/adamwitwer/nudge
@@ -145,9 +146,10 @@ Package layout (run as `python -m nudge <command>`):
                         never include the token-bearing URL)
   nudge/config.py       config.toml loader and validation
   nudge/engine.py       service loop
+  nudge/audit.py        daily check for events with no popup notification
   nudge/snooze.py       Telegram button taps (long-poll getUpdates in place
                         of the tick sleep), snooze re-sends
-  nudge/__main__.py     CLI: auth | calendars | upcoming | test |
+  nudge/__main__.py     CLI: auth | calendars | upcoming | test | audit |
                         telegram-chats | run
   tests/                pytest: triggers, format, engine, config
   systemd/nudge.service
@@ -167,6 +169,12 @@ Service loop:
                             button taps are handled within about a second.
                             Taps from other chats are ignored. Snoozes are in
                             SQLite, so they survive restarts.
+  Daily audit:              after audit.time (08:30) once per local day
+                            (recorded in the store's meta table), list the
+                            next 14 days' events with no popup, and send via
+                            Telegram only if there are any. Recurring events
+                            are listed once, email-only ones flagged,
+                            #nonudge in the description skips an event.
   Google auth failure:      one Discord alert telling you to re-run
                             `nudge auth`, then retry every poll.
   Time zone:                taken from the Google account setting, not from
@@ -234,7 +242,12 @@ M5  Hardening / extensions (as needed)
     - [x] Retry on Discord 429 and on send failure (next tick, within grace)
     - [x] Telegram notifier, with sent state tracked per notifier
       (2026-09-22)
+    - [x] Daily "missing notification" audit, 8:30 AM via Telegram
+      (2026-09-22; the user's idea)
     - [ ] Daily "today's agenda" digest message (nice-to-have)
+    - [ ] Verify how all-day events with useDefault behave. The API's
+      defaultReminders are timed-event defaults; GCal's separate all-day
+      defaults may not be exposed.
     - [x] Telegram snooze buttons: 💤 10 min · 💤 1 hour · ✅ Done
       (2026-09-22). Snoozed reminders re-send to Telegram only.
     - [x] Emoji keyword rules (2026-09-22)

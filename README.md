@@ -34,6 +34,11 @@ are looked up in its local state.
 6. `.venv/bin/python -m nudge upcoming` shows what will fire and when.
 7. `.venv/bin/python -m nudge run` runs the service.
 
+Every morning at 8:30, nudge checks the next 14 days for events with **no popup
+notification** (which would never fire) and sends the list to Telegram, but
+only if there's something on it. Put `#nonudge` in an event's description to
+leave it out. `nudge audit` runs the same check by hand.
+
 ## Running on a Raspberry Pi
 
 ```

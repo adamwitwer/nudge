@@ -49,6 +49,15 @@ class Store:
             " snooze_until TEXT,"  # UTC ISO; NULL = no pending snooze
             " created TEXT NOT NULL)"
         )
+        self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        self.db.commit()
+
+    def get_meta(self, key: str) -> str | None:
+        row = self.db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return row[0] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        self.db.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
         self.db.commit()
 
     def seen(self, key: str) -> bool:

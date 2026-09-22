@@ -109,6 +109,7 @@ class Message:
     late: bool = False
     emoji: str = EMOJI
     ref: int | None = None  # store.reminders id; lets Telegram attach snooze buttons
+    lines: tuple[str, ...] = ()  # optional bullet list below the headline
 
 
 _MD_SPECIAL = re.compile(r"([\\*_~`|>])")
@@ -125,7 +126,7 @@ def as_markdown(m: Message) -> str:
         text += f" · {escape_markdown(m.detail)}"
     if m.late:
         text += " _(late)_"
-    return text
+    return text + "".join(f"\n• {escape_markdown(line)}" for line in m.lines)
 
 
 def as_html(m: Message) -> str:
@@ -135,7 +136,7 @@ def as_html(m: Message) -> str:
         text += f" · {html.escape(m.detail, quote=False)}"
     if m.late:
         text += " <i>(late)</i>"
-    return text
+    return text + "".join(f"\n• {html.escape(line, quote=False)}" for line in m.lines)
 
 
 def message(

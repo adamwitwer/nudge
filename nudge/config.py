@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 from .format import DEFAULT_KEYWORDS, EMOJI, EmojiRules
@@ -18,6 +18,17 @@ class ConfigError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class AuditConfig:
+    """Daily check for upcoming events that have no popup notification."""
+
+    enabled: bool = True
+    at: time = time(8, 30)
+    days: int = 14
+    via: tuple[str, ...] = ("telegram",)  # notifier names
+    tag: str = "#nonudge"  # put this in an event's description to skip it
+
+
+@dataclass(frozen=True)
 class Config:
     calendars: list[str]
     poll: timedelta
@@ -26,6 +37,7 @@ class Config:
     telegram_bot_token: str | None = None
     telegram_chat_id: int | str | None = None
     emoji: EmojiRules = field(default_factory=EmojiRules)
+    audit: AuditConfig = field(default_factory=lambda: AuditConfig())
 
 
 def load(path: Path = CONFIG_FILE) -> Config:
@@ -60,6 +72,19 @@ def load(path: Path = CONFIG_FILE) -> Config:
         default=emoji_cfg.get("default", EMOJI),
     )
 
+    a = raw.get("audit", {})
+    try:
+        at = datetime.strptime(a.get("time", "08:30"), "%H:%M").time()
+    except ValueError:
+        raise ConfigError(f"{path}: audit.time must be HH:MM (24-hour)") from None
+    audit = AuditConfig(
+        enabled=a.get("enabled", True),
+        at=at,
+        days=int(a.get("days", 14)),
+        via=tuple(a.get("via", ["telegram"])),
+        tag=a.get("tag", "#nonudge"),
+    )
+
     return Config(
         calendars=calendars,
         poll=timedelta(minutes=raw.get("poll_minutes", 5)),
@@ -68,4 +93,5 @@ def load(path: Path = CONFIG_FILE) -> Config:
         telegram_bot_token=token,
         telegram_chat_id=chat_id,
         emoji=emoji,
+        audit=audit,
     )
