@@ -29,10 +29,16 @@ M4 is fully ticked. Still to confirm: the first *scheduled* 8:30 AM audit
 (deep-indigo disc, amber dot, ivory + periwinkle waves), rendered to
 `avatar-512.png` and `avatar-120.png` with `rsvg-convert`. The old bell
 (`assets/logo.*`) is gone. Set already: the Discord webhook's name and avatar,
-and the Telegram bot's name and descriptions. **Still manual for the user:**
-the Telegram bot photo (@BotFather `/setuserpic`, send `avatar-512.png`) and
-the Google OAuth consent-screen logo (`avatar-120.png`). Concept canvas:
+and the Telegram bot's name and descriptions. Both manual uploads are
+done too (Telegram bot photo, Google consent-screen logo), confirmed by the
+user 2026-09-22. Concept canvas:
 https://claude.ai/artifact/BEnwigXDHJs3DiPw2qE8dk
+
+**Now in normal use.** The user is living with nudge for a few days and will
+bring improvement ideas. Nothing is queued; wait for their report rather than
+building ahead. Worth asking about when they return: which destination they
+actually read (Discord vs Telegram), whether the 8:30 audit lands well, and
+whether any reminder was late or missed.
 
 **Also open:** the trial week of Discord vs Telegram ends about 2026-09-29, so
 ask which to keep. Check all-day `useDefault` behavior (input log). The
