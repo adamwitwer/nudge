@@ -1,5 +1,5 @@
 [Unit]
-Description=nudge (GCal popup reminders -> Discord)
+Description=nudge (GCal popup reminders -> Discord/Telegram)
 After=network-online.target time-sync.target
 Wants=network-online.target
 
