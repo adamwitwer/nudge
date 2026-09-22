@@ -1,0 +1,20 @@
+[project]
+name = "nudge"
+version = "0.1.0"
+description = "Google Calendar popup reminders -> Discord/Telegram, from a Raspberry Pi"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "google-api-python-client>=2.100",
+    "google-auth-oauthlib>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["nudge"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

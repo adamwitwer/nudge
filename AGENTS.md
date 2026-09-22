@@ -18,10 +18,12 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
 - **Public repo: never commit secrets.** OAuth client secrets, `token.json`,
   webhook URLs, bot tokens, chat IDs, and real calendar IDs stay out of git.
   Commit `config.example.toml` only.
-- Target is Python 3.11+ (Raspberry Pi OS Bookworm). Don't use newer syntax
+- Target is Python 3.11+ (dev machine has 3.14) (Raspberry Pi OS Bookworm). Don't use newer syntax
   without checking.
 - Trigger computation is the risky logic (all-day events, `useDefault`,
   time zones, DST), so it gets unit tests.
+- Layout: `nudge/` package, run as `python -m nudge <command>`. Tests are in
+  `tests/` (pytest). Local secrets live in `~/.config/nudge/`.
 - When a requirement changes, update `miniPRD.txt` section 3 as well as the
   code.
 
@@ -37,7 +39,7 @@ first. Status is one of: open / adopted / declined / done.
 | 2026-09-21 | Read the calendar as the user (OAuth), not with a service account. Reminders are per-user, so a service account would see none. | adopted |
 | 2026-09-21 | Poll the API (every 5 min) rather than use push/watch, which needs a public HTTPS endpoint. | adopted |
 | 2026-09-21 | Dedupe key `calendar:event:start:minutes` in SQLite. Moved events re-fire correctly and restarts don't double-send. | adopted |
-| 2026-09-21 | Put a Notifier interface in front of Discord and Telegram and implement both. Each is about 30 lines. Telegram if phone push reliability matters most, Discord for richer formatting. | open: user to pick a primary |
+| 2026-09-21 | Put a Notifier interface in front of Discord and Telegram and implement both. Each is about 30 lines. Telegram if phone push reliability matters most, Discord for richer formatting. | adopted: Discord first, Telegram later |
 | 2026-09-21 | Add an alert (via the notifier) when Google auth fails, so the service can't die silently. | open (M5) |
 | 2026-09-21 | Make sure NTP time sync is on for the Pi (it has no RTC). | open (M4) |
 | 2026-09-21 | A daily "today's agenda" digest message would fit well later. | open (idea) |

@@ -99,9 +99,11 @@ Discord and want the richer visual formatting.
 [x] Message content: event title only, to start. No description, location,
     or links. Keep it very simple.
 [x] Quiet hours: not needed.
-[ ] Discord vs Telegram: still open (see section 2). Default plan: the
-    Notifier interface, with both implemented.
-[x] Repo: public GitHub repo under the user's account. Secrets must never
+[x] Discord vs Telegram: Discord (webhook) first, since the user already
+    uses it. Telegram comes later, behind the same Notifier interface.
+[x] Access method: Google Calendar API with OAuth. Tested and rejected the
+    secret iCal feed: it drops popup/email reminders (VALARMs).
+[x] Repo: public GitHub repo (github.com/adamwitwer/nudge), MIT license. Secrets must never
     be committed (see section 4, Deployment).
 
 4. ARCHITECTURE
