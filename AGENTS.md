@@ -24,6 +24,10 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
   time zones, DST), so it gets unit tests.
 - Layout: `nudge/` package, run as `python -m nudge <command>`. Tests are in
   `tests/` (pytest). Local secrets live in `~/.config/nudge/`.
+- Gotcha (macOS, Python 3.13+): macOS can flag the venv's editable-install
+  `.pth` as hidden, and Python then skips it. pytest sets `pythonpath = ["."]`,
+  and `python -m nudge` works from the repo root regardless.
+- Run `pytest` before every commit.
 - When a requirement changes, update `miniPRD.txt` section 3 as well as the
   code.
 
