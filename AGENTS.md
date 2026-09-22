@@ -24,7 +24,7 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
   time zones, DST), so it gets unit tests.
 - Layout: `nudge/` package, run as `python -m nudge <command>`. Tests are in
   `tests/` (pytest). Local secrets live in `~/.config/nudge/`.
-- Deployment: Raspberry Pi 5 (`raspberrypi`, over Tailscale at
+- Deployment: Raspberry Pi 5 (`raspberrypi`: LAN 192.168.50.167, Tailscale
   100.107.81.122; Debian 12, Python 3.11.2). It follows the Pi's conventions:
   a git clone in `~/Projects/nudge` with a `venv/`, secrets beside the code
   (gitignored), and the unit in `systemd/nudge.service` copied to
@@ -47,7 +47,6 @@ first. Status is one of: open / adopted / declined / done.
 | Date | Input | Status |
 |------|-------|--------|
 | 2026-09-21 | M4: deployed to the Pi as `nudge.service` (enabled, active). Verified `upcoming` and `test` from the Pi. First live check: TEST EVENT FOR CLAUDE popup at 3:50 PM ET on 2026-09-22. Only one machine should run `nudge run`, or you get double sends. | done |
-| 2026-09-21 | The Pi's LAN IP (192.168.50.53) isn't in the Mac's known_hosts, so SSH over LAN failed host-key verification. Use Tailscale (100.107.81.122), or verify and add the LAN key by hand. | open (minor) |
 | 2026-09-21 | M2+M3 done: SQLite dedupe store, 30 s tick / 5 min poll loop, Discord webhook (mentions disabled so a title can't ping @everyone), `nudge test` and `nudge run`. The auth-failure alert (from M5) is also in. Sample message delivered to Discord. | done |
 | 2026-09-21 | With more than one notifier, a send failure on the second means a retry re-sends on the first. That's fine while Discord is the only notifier. Track per-notifier sent state when Telegram is added. | open (Telegram) |
 | 2026-09-21 | M1 verified against the real API: popup and email overrides come back exactly as set in GCal. The Family calendar's own tz is UTC, so display and all-day math use the **account** tz (`settings.get('timezone')`) instead. | done |
