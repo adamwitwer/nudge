@@ -84,4 +84,5 @@ def test_specific_filter_rules_beat_the_general_one():
     r = EmojiRules()
     assert r.pick("Change water filters (stages 1 and 3)") == "💧"
     assert r.pick("Change HVAC filters") == "🌬️"
+    assert r.pick("Change water membrane (stage 2)") == "💧"
     assert r.pick("Replace fridge filter") == "🔧"

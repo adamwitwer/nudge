@@ -42,6 +42,7 @@ DEFAULT_KEYWORDS = {
     "bill": "💳",
     # Specific before general: the first matching keyword wins.
     "water filter": "💧",
+    "membrane": "💧",
     "hvac": "🌬️",
     "filter": "🔧",
 }
