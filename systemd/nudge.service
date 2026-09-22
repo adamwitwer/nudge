@@ -1,0 +1,16 @@
+[Unit]
+Description=nudge (GCal popup reminders -> Discord)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=adam
+WorkingDirectory=/home/adam/Projects/nudge
+ExecStart=/home/adam/Projects/nudge/venv/bin/python -m nudge run
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

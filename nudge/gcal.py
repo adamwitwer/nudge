@@ -13,7 +13,23 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-CONFIG_DIR = Path(os.environ.get("NUDGE_CONFIG_DIR", "~/.config/nudge")).expanduser()
+def _config_dir() -> Path:
+    """Where config.toml, credentials.json, token.json and state.db live.
+
+    1. $NUDGE_CONFIG_DIR, if set
+    2. the project folder, if it holds config.toml (the Pi layout:
+       ~/Projects/nudge, secrets beside the code, all gitignored)
+    3. ~/.config/nudge
+    """
+    if env := os.environ.get("NUDGE_CONFIG_DIR"):
+        return Path(env).expanduser()
+    project = Path(__file__).resolve().parent.parent
+    if (project / "config.toml").exists():
+        return project
+    return Path("~/.config/nudge").expanduser()
+
+
+CONFIG_DIR = _config_dir()
 CLIENT_SECRETS = CONFIG_DIR / "credentials.json"
 TOKEN = CONFIG_DIR / "token.json"
 

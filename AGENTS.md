@@ -24,6 +24,14 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
   time zones, DST), so it gets unit tests.
 - Layout: `nudge/` package, run as `python -m nudge <command>`. Tests are in
   `tests/` (pytest). Local secrets live in `~/.config/nudge/`.
+- Deployment: Raspberry Pi 5 (`raspberrypi`, over Tailscale at
+  100.107.81.122; Debian 12, Python 3.11.2). It follows the Pi's conventions:
+  a git clone in `~/Projects/nudge` with a `venv/`, secrets beside the code
+  (gitignored), and the unit in `systemd/nudge.service` copied to
+  `/etc/systemd/system/`. Config lookup: `$NUDGE_CONFIG_DIR`, then the
+  project folder if it has `config.toml`, then `~/.config/nudge` (dev Mac).
+- Deploy an update: `ssh adam@100.107.81.122 'cd ~/Projects/nudge && git pull
+  && venv/bin/pip install -q -e . && sudo systemctl restart nudge'`
 - Gotcha (macOS, Python 3.13+): macOS can flag the venv's editable-install
   `.pth` as hidden, and Python then skips it. pytest sets `pythonpath = ["."]`,
   and `python -m nudge` works from the repo root regardless.
