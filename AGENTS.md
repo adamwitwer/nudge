@@ -8,8 +8,19 @@ and suggest improvements, not just execute. Record that input here.
 
 **nudge** is a small service for a Raspberry Pi. It reads Google Calendar events (from a
 configured list of calendars) and sends each event's **popup** reminders as
-Discord and/or Telegram messages at the times set in GCal. The spec and plan
+Discord messages (Telegram planned) at the times set in GCal. The spec and plan
 are in `miniPRD.txt`, which is the source of truth for requirements.
+
+## Where we left off (2026-09-21)
+
+- The MVP is live on the Pi (`nudge.service`, active). M0–M4 are done; see
+  `miniPRD.txt` STATUS and section 6.
+- First real reminders on 2026-09-22 ET: `✨ nudge test ✨` at 9:50 AM
+  (Personal) and `TEST EVENT FOR CLAUDE` at 3:50 PM (Family). The user will
+  report back. If they didn't arrive, start with `journalctl -u nudge` on the
+  Pi.
+- Candidates for next: Telegram notifier, daily agenda digest, emoji rules,
+  and popups on the recurring Trash Night / Yard Trash events.
 
 ## Working agreements
 
@@ -18,19 +29,19 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
 - **Public repo: never commit secrets.** OAuth client secrets, `token.json`,
   webhook URLs, bot tokens, chat IDs, and real calendar IDs stay out of git.
   Commit `config.example.toml` only.
-- Target is Python 3.11+ (dev machine has 3.14) (Raspberry Pi OS Bookworm). Don't use newer syntax
-  without checking.
+- Target is Python 3.11+ (the Pi has 3.11.2; the dev Mac has 3.14). Don't use
+  newer syntax without checking.
 - Trigger computation is the risky logic (all-day events, `useDefault`,
   time zones, DST), so it gets unit tests.
 - Layout: `nudge/` package, run as `python -m nudge <command>`. Tests are in
-  `tests/` (pytest). Local secrets live in `~/.config/nudge/`.
+  `tests/` (pytest). The architecture as built is in `miniPRD.txt` section 4.
 - Deployment: Raspberry Pi 5 (`raspberrypi`: LAN 192.168.50.167, Tailscale
   100.107.81.122; Debian 12, Python 3.11.2). It follows the Pi's conventions:
   a git clone in `~/Projects/nudge` with a `venv/`, secrets beside the code
   (gitignored), and the unit in `systemd/nudge.service` copied to
   `/etc/systemd/system/`. Config lookup: `$NUDGE_CONFIG_DIR`, then the
   project folder if it has `config.toml`, then `~/.config/nudge` (dev Mac).
-- Deploy an update: `ssh adam@100.107.81.122 'cd ~/Projects/nudge && git pull
+- Deploy an update (LAN .167 or Tailscale): `ssh adam@192.168.50.167 'cd ~/Projects/nudge && git pull
   && venv/bin/pip install -q -e . && sudo systemctl restart nudge'`
 - Gotcha (macOS, Python 3.13+): macOS can flag the venv's editable-install
   `.pth` as hidden, and Python then skips it. pytest sets `pythonpath = ["."]`,
@@ -52,11 +63,11 @@ first. Status is one of: open / adopted / declined / done.
 | 2026-09-21 | M1 verified against the real API: popup and email overrides come back exactly as set in GCal. The Family calendar's own tz is UTC, so display and all-day math use the **account** tz (`settings.get('timezone')`) instead. | done |
 | 2026-09-21 | Existing recurring events (Trash Night, Yard Trash) use **email** reminders only, so nudge won't fire for them until popups are added. | open: user to update events |
 | 2026-09-21 | Tested the secret iCal feed as an alternative to OAuth. **Rejected:** a test event with popup and email reminders came through with no VALARMs, and 0 of 23 events on the family calendar had reminders. The feed can't be trusted for reminder data. Proceed with OAuth (with branding and PRIVACY.md filled in). | declined |
-| 2026-09-21 | Set the Google OAuth consent screen to "In production", not "Testing". Otherwise refresh tokens expire after 7 days and the Pi fails silently. | open (M0) |
+| 2026-09-21 | Set the Google OAuth consent screen to "In production", not "Testing". Otherwise refresh tokens expire after 7 days and the Pi fails silently. | done |
 | 2026-09-21 | Read the calendar as the user (OAuth), not with a service account. Reminders are per-user, so a service account would see none. | adopted |
 | 2026-09-21 | Poll the API (every 5 min) rather than use push/watch, which needs a public HTTPS endpoint. | adopted |
 | 2026-09-21 | Dedupe key `calendar:event:start:minutes` in SQLite. Moved events re-fire correctly and restarts don't double-send. | adopted |
 | 2026-09-21 | Put a Notifier interface in front of Discord and Telegram and implement both. Each is about 30 lines. Telegram if phone push reliability matters most, Discord for richer formatting. | adopted: Discord first, Telegram later |
-| 2026-09-21 | Add an alert (via the notifier) when Google auth fails, so the service can't die silently. | open (M5) |
-| 2026-09-21 | Make sure NTP time sync is on for the Pi (it has no RTC). | open (M4) |
+| 2026-09-21 | Add an alert (via the notifier) when Google auth fails, so the service can't die silently. | done (engine.py) |
+| 2026-09-21 | Make sure NTP time sync is on for the Pi (it has no RTC). | done (NTPSynchronized=yes) |
 | 2026-09-21 | A daily "today's agenda" digest message would fit well later. | open (idea) |

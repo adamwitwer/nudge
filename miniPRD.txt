@@ -12,6 +12,11 @@ The messages would need to be nicely formatted and might include emoji and other
 PROJECT PLAN  (drafted 2026-09-21)
 ================================================================================
 
+STATUS (2026-09-21): MVP is live on the Pi (nudge.service). M0-M4 are done.
+Next: the first real reminders fire 2026-09-22 at 9:50 AM and 3:50 PM ET.
+Then a week of comparison against GCal, then M5 / Telegram.
+Repo: https://github.com/adamwitwer/nudge
+
 1. FEASIBILITY SUMMARY
 ----------------------
 Feasible, and small. The Google Calendar API gives us each event's reminder
@@ -80,7 +85,10 @@ Telegram (bot)
     up your chat_id.
   - MarkdownV2 escaping is fiddly. Use `parse_mode=HTML` instead.
 
-Recommendation: build a small Notifier interface and ship BOTH early.
+DECISION (2026-09-21): Discord first, since it's already set up. Telegram
+comes later, behind the same Notifier interface.
+
+Original recommendation: build a small Notifier interface and ship BOTH early.
 Each is about 30 lines. If you want to pick one for the MVP, use Telegram if
 phone push reliability matters most, or Discord if you already live in
 Discord and want the richer visual formatting.
@@ -106,92 +114,110 @@ Discord and want the richer visual formatting.
 [x] Repo: public GitHub repo (github.com/adamwitwer/nudge), MIT license. Secrets must never
     be committed (see section 4, Deployment).
 
-4. ARCHITECTURE
----------------
-Language/runtime: Python 3.11+ (preinstalled on Raspberry Pi OS Bookworm).
-Libraries: google-api-python-client, google-auth-oauthlib, httpx (or
-requests), tomllib (stdlib) for config. No web framework needed.
+4. ARCHITECTURE (as built)
+--------------------------
+Language/runtime: Python 3.11+ (the Pi has 3.11.2; the dev Mac has 3.14).
+Dependencies: google-api-python-client, google-auth-oauthlib. Everything
+else is stdlib (tomllib, sqlite3, urllib, zoneinfo). Dev: pytest.
 
-Components:
-  config.toml        calendars, notifier(s), poll interval, grace window,
-                     lookahead window, emoji rules
-  gcal.py            auth + fetch upcoming event instances and calendar
-                     default reminders
-  schedule.py        expand events -> list of Trigger(event_id, start,
-                     fire_at, minutes_before). Handles useDefault, all-day
-                     math, time zones, declined events.
-  store.py           SQLite: table sent(trigger_key PRIMARY KEY, sent_at).
-                     trigger_key = f"{calendar_id}:{event_id}:{start}:{minutes}"
-                     If an event is moved, its start changes, the key changes,
-                     and it re-fires correctly.
-  notifiers/         base.Notifier.send(Trigger, Event);
-                     discord.py (webhook embeds), telegram.py (HTML parse mode)
-  format.py          message templating plus emoji picks
-  main.py            main loop
+Package layout (run as `python -m nudge <command>`):
+  nudge/gcal.py         OAuth (calendar.readonly), token refresh, config-dir
+                        lookup, calendarList / events.list (singleEvents)
+                        and the account time zone (settings.get)
+  nudge/triggers.py     pure: event -> Trigger(start, fire_at, minutes_before,
+                        key). Handles popup-only, useDefault, all-day
+                        wall-clock math, DST, declined and cancelled events.
+  nudge/store.py        SQLite `handled(key, status sent|skipped, at)`,
+                        pruned after 60 days.
+                        key = calendar_id:event_id:start:minutes. A moved
+                        event gets a new key and fires again.
+  nudge/format.py       message text + Discord markdown escaping
+  nudge/notifiers/      Notifier protocol; discord.py (webhook, mentions
+                        disabled, 429 retry). telegram.py: TODO.
+  nudge/config.py       config.toml loader and validation
+  nudge/engine.py       service loop
+  nudge/__main__.py     CLI: auth | calendars | upcoming | test | run
+  tests/                pytest: triggers, format, engine, config
+  systemd/nudge.service
 
-Main loop (simple, and survives restarts):
-  every POLL_INTERVAL (default 5 min):
-      fetch events from now - grace to now + 4 weeks (max reminder range)
-      rebuild the in-memory trigger list
-  every 30 s:
-      for each trigger with fire_at <= now and key not in `sent`:
-          if now - fire_at <= GRACE: send; record in `sent`
-          else: record as skipped (log it)
-  Deleted or cancelled events disappear on the next poll, so nothing fires.
-  Edited reminder times are picked up within one poll interval.
+Service loop:
+  every poll_minutes (5):   fetch events in [now - grace, now + 29 days]
+                            for the configured calendars and rebuild the
+                            triggers. On error, keep the last good list.
+  every 30 s:               for each trigger with fire_at <= now that is not
+                            yet handled:
+                              late by at most grace (15 min): send; mark sent
+                                (tagged "(late)" if more than 2 min late)
+                              later than that: mark skipped and log
+                              send failed: leave unmarked, retry next tick
+  Google auth failure:      one Discord alert telling you to re-run
+                            `nudge auth`, then retry every poll.
+  Time zone:                taken from the Google account setting, not from
+                            each calendar (the Family calendar is set to UTC).
 
-Deployment: systemd unit (Restart=always), running as a non-root user, with
-logs going to journald. Secrets (token.json, webhook URL, bot token) live in
-~/.config/nudge/ with chmod 600.
-Public repo hygiene: commit only config.example.toml. .gitignore covers
-config.toml, token.json, credentials.json, *.db, and .env.
+Config and secrets (config.toml, credentials.json, token.json, state.db),
+in lookup order:
+  1. $NUDGE_CONFIG_DIR
+  2. the project folder, if it contains config.toml (the Pi: ~/Projects/nudge)
+  3. ~/.config/nudge (the dev Mac)
+All are gitignored and chmod 600. Only config.example.toml is committed.
+
+Deployment (Pi 5, Debian 12, `raspberrypi`, LAN 192.168.50.167 / Tailscale
+100.107.81.122): git clone in ~/Projects/nudge, venv/, the systemd unit
+copied to /etc/systemd/system (Restart=always, User=adam), logs in journald
+(`journalctl -u nudge`). Update with: git pull, pip install -e .,
+systemctl restart nudge. Only the Pi runs `nudge run`.
 
 5. MESSAGE FORMAT (MVP: title only)
 -----------------------------------
-  ⏰ Dentist appointment · in 1 hour
-  ⏰ Mom's birthday · tomorrow
+  ⏰ **Dentist appointment** · in 10 minutes
+  ⏰ **Dentist appointment** · in 1 hour 30 minutes
+  ⏰ **Dentist appointment** · tomorrow at 9:00 AM      (leads of 6 h or more)
+  ⏰ **Mom's birthday** · tomorrow                      (all-day)
+  ⏰ **Dentist appointment** · in 5 minutes _(late)_
 
-  - The lead time wording comes from minutes_before ("in 10 minutes",
-    "in 1 hour", "tomorrow at 9 AM"). All-day events say "today" or
-    "tomorrow".
-  - Emoji: a default ⏰, with optional keyword rules in config later
-    (🦷 dentist, 🎂 birthday, 💊 meds ...).
-  - Possible later additions: start time, location, Meet link.
+  - The wording is computed at send time from the event start.
+  - Ideas for later: emoji keyword rules (🦷 dentist, 🎂 birthday, 💊 meds),
+    start time, location.
 
 6. MILESTONES
 -------------
-M0  Setup [DONE] (≈1 hr)
-    - Google Cloud project, enable Calendar API, create an OAuth client of
-      type "Desktop app", set the consent screen to "In production"
-    - Create the Discord webhook and/or Telegram bot, and find the chat_id
-M1  Calendar read spike [DONE] (≈1–2 hrs)
-    - Script that authenticates and prints upcoming events with their
-      effective reminders (including defaults and all-day math). Validate
-      against what the GCal UI shows for a handful of real events.
-M2  Trigger engine + store [DONE] (≈2–3 hrs)
-    - schedule.py + store.py + main loop, printing to the console instead of
-      sending
-    - Unit tests for trigger computation: timed events, all-day events,
-      useDefault, multiple reminders, DST boundary, moved events, declined
-      events, grace window
-M3  Notifiers + formatting [DONE] (≈2 hrs)
-    - Discord and Telegram senders, message templates, emoji rules
-    - A `--test` CLI flag that sends a sample notification
-M4  Pi deployment [DONE 2026-09-21; the week-long comparison is still running] (≈1 hr)
-    - Install into a venv, copy the token, add the systemd unit, confirm NTP
-    - Run for a week alongside the GCal native reminders and compare
-M5  Hardening (optional, as needed)
-    - Retry with backoff on network or Discord/Telegram errors
-    - Alert (via the notifier) if Google auth fails, so the service can't die
-      silently
-    - Daily heartbeat or "today's agenda" digest message (nice-to-have)
-    - Telegram inline "Snooze" buttons (stretch)
+M0  Setup [DONE]
+    - Google Cloud project, Calendar API, "Desktop app" OAuth client, consent
+      screen In production. Branding needed a logo, home page, privacy and
+      terms links, and github.com as an authorized domain (PRIVACY.md,
+      TERMS.md, assets/logo.png).
+    - Discord webhook created.
+    - Tested and rejected: the secret iCal feed (it drops reminders).
+M1  Calendar read spike [DONE]
+    - `nudge auth / calendars / upcoming`, checked against real events
+M2  Trigger engine + store [DONE]
+    - triggers.py, store.py, engine loop, unit tests
+M3  Notifiers + formatting [DONE]
+    - Discord webhook, format.py, `nudge test`
+M4  Pi deployment [DONE 2026-09-21]
+    - Running as nudge.service on the Pi
+    - [ ] First live reminders on 2026-09-22 (9:50 AM Personal, 3:50 PM Family)
+    - [ ] Run for a week alongside GCal's native notifications and compare
+    - [ ] Add popup notifications to the recurring Trash Night / Yard Trash
+      events, and consider default popups per calendar
+M5  Hardening / extensions (as needed)
+    - [x] Alert via the notifier if Google auth fails
+    - [x] Retry on Discord 429 and on send failure (next tick, within grace)
+    - [ ] Telegram notifier (track sent state per notifier, to avoid
+      re-sending when one of several fails)
+    - [ ] Daily "today's agenda" digest message (nice-to-have)
+    - [ ] Telegram inline "Snooze" buttons (stretch)
+    - [ ] Emoji keyword rules
 
 7. RISKS
 --------
-- Refresh token revoked or expired -> silent failure. Mitigate with (c) above
-  plus the M5 auth-failure alert.
-- Pi SD card corruption -> keep state tiny (SQLite, which is rebuildable),
-  keep config in git, and back up token.json.
+- Refresh token revoked or expired -> handled: Discord alert, re-run
+  `nudge auth`. The consent screen is In production, so there's no 7-day
+  expiry.
+- Pi SD card corruption -> state.db is disposable. Keep a copy of
+  config.toml, credentials.json, and token.json off the Pi (the Mac has
+  them in ~/.config/nudge).
 - Home network outage -> late or skipped reminders. The grace window limits
   the damage. Acceptable for a personal tool.
+- Two machines running `nudge run` -> duplicate messages. Only the Pi runs it.
