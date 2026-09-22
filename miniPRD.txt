@@ -177,7 +177,7 @@ M2  Trigger engine + store [DONE] (≈2–3 hrs)
 M3  Notifiers + formatting [DONE] (≈2 hrs)
     - Discord and Telegram senders, message templates, emoji rules
     - A `--test` CLI flag that sends a sample notification
-M4  Pi deployment (≈1 hr)
+M4  Pi deployment [DONE 2026-09-21; the week-long comparison is still running] (≈1 hr)
     - Install into a venv, copy the token, add the systemd unit, confirm NTP
     - Run for a week alongside the GCal native reminders and compare
 M5  Hardening (optional, as needed)
