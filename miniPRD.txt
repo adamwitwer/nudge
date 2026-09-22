@@ -200,7 +200,8 @@ systemctl restart nudge. Only the Pi runs `nudge run`.
 
   - The wording is computed at send time from the event start.
   - Emoji (2026-09-22): keyword rules in format.EmojiRules. There are
-    built-ins (🗑️ trash, 🎂 birthday, 🦷 dentist, 💊 meds, ...), and config
+    built-ins (🗑️ trash, 🎂 birthday, 🦷 dentist, 💊 meds, 💧 water filter,
+    🌬️ HVAC, 🔧 filter, ...), and config
     [emoji.keywords] can override or extend them. Matching is
     case-insensitive at a word start; the fallback is ⏰.
     `nudge upcoming` previews the emoji.

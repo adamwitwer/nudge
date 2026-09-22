@@ -40,6 +40,10 @@ DEFAULT_KEYWORDS = {
     "breakfast": "🍽️",
     "pay": "💳",
     "bill": "💳",
+    # Specific before general: the first matching keyword wins.
+    "water filter": "💧",
+    "hvac": "🌬️",
+    "filter": "🔧",
 }
 
 

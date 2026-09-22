@@ -76,3 +76,12 @@ def test_message_uses_emoji_rules():
     t = Trigger("c", "e", "Dentist", NOW + timedelta(hours=1), False, 60, NOW)
     assert message(t, NOW, NY).emoji == "🦷"
     assert message(t, NOW, NY, rules=EmojiRules({}, "🔔")).emoji == "🔔"
+
+
+def test_specific_filter_rules_beat_the_general_one():
+    from nudge.format import EmojiRules
+
+    r = EmojiRules()
+    assert r.pick("Change water filters (stages 1 and 3)") == "💧"
+    assert r.pick("Change HVAC filters") == "🌬️"
+    assert r.pick("Replace fridge filter") == "🔧"
