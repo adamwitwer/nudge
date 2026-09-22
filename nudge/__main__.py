@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import logging
 import sys
 from datetime import datetime, timedelta, timezone
@@ -71,7 +72,12 @@ def cmd_test(args) -> None:
     now = datetime.now(timezone.utc)
     sample = Trigger("test", "test", "nudge test message", now + timedelta(minutes=10), False, 10, now)
     msg = format.message(sample, now, ZoneInfo("UTC"))  # relative wording; tz unused
-    for n in _notifiers(cfg):
+    ns = _notifiers(cfg)
+    if any(getattr(n, "supports_actions", False) for n in ns):
+        # Real snooze buttons. They only work when the machine running the
+        # service (the Pi) sent this, since taps are looked up in its store.
+        msg = dataclasses.replace(msg, ref=Store().add_reminder(sample, msg, now))
+    for n in ns:
         n.send(msg)
         print(f"sent via {n.name}: {msg.title} · {msg.detail}")
 

@@ -12,6 +12,7 @@ from ..format import Message, as_markdown
 
 class DiscordWebhook:
     name = "discord"
+    supports_actions = False  # webhooks can't have buttons; Message.ref is ignored
 
     def __init__(self, url: str, timeout: float = 10):
         self.url = url

@@ -29,7 +29,10 @@ def test_clock_times_for_longer_leads():
 
 
 def test_started_already():
-    assert lead(timedelta(minutes=-3)) == "now"
+    assert lead(timedelta(seconds=20)) == "now"
+    assert lead(timedelta(minutes=-3)) == "started 3 minutes ago"
+    assert lead(timedelta(minutes=-70)) == "started 1 hour 10 minutes ago"
+    assert lead(timedelta(hours=-7)) == "started at 5:00 AM"
 
 
 def test_all_day():

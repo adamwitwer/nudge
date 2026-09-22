@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import time
 from datetime import datetime, timedelta, timezone
@@ -9,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from google.auth.exceptions import RefreshError
 
-from . import format, gcal
+from . import format, gcal, snooze
 from .config import Config
 from .notifiers import Notifier
 from .store import Store
@@ -56,6 +57,8 @@ def process_due(
                 store.mark(f"{t.key}|{n.name}", "skipped", now)
             continue
         msg = format.message(t, now, tz, late=lateness > LATE_AFTER, rules=rules)
+        if any(getattr(n, "supports_actions", False) for n in pending):
+            msg = dataclasses.replace(msg, ref=store.add_reminder(t, msg, now))
         for n in pending:
             try:
                 n.send(msg)
@@ -71,6 +74,7 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
     last_poll: datetime | None = None
     auth_alerted = False
     svc = tz = None
+    bots = [n for n in notifiers if getattr(n, "supports_actions", False)]
 
     while True:
         now = datetime.now(timezone.utc)
@@ -99,7 +103,12 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
                 last_poll = now
         if tz is not None:
             process_due(triggers, store, notifiers, now, tz, cfg.grace, cfg.emoji)
-        time.sleep(TICK_SECONDS)
+            if bots:
+                snooze.fire_due(bots, store, now, tz)
+        if bots and tz is not None:
+            snooze.listen(bots[0], store, tz, TICK_SECONDS)  # returns early on a tap
+        else:
+            time.sleep(TICK_SECONDS)
 
 
 def _alert(notifiers: list[Notifier], message: format.Message) -> None:

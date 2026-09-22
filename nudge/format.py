@@ -56,12 +56,17 @@ class EmojiRules:
 RELATIVE_UNDER = timedelta(hours=6)  # "in 2 hours" below this, "today at 4:00 PM" above
 
 
-def _clock(dt: datetime) -> str:
+def clock(dt: datetime) -> str:
     return dt.strftime("%I:%M %p").lstrip("0")
 
 
 def _plural(n: int, unit: str) -> str:
     return f"{n} {unit}" + ("" if n == 1 else "s")
+
+
+def _duration(minutes: int) -> str:
+    hours, mins = divmod(minutes, 60)
+    return " ".join(([_plural(hours, "hour")] if hours else []) + ([_plural(mins, "minute")] if mins else []))
 
 
 def lead_text(start: datetime, all_day: bool, now: datetime, tz: ZoneInfo) -> str:
@@ -77,17 +82,19 @@ def lead_text(start: datetime, all_day: bool, now: datetime, tz: ZoneInfo) -> st
         return local_start.strftime("on %a %b ") + str(local_start.day)
 
     minutes = round((start - now).total_seconds() / 60)
-    if minutes <= 0:
+    if minutes == 0:
         return "now"
+    if minutes < 0:  # e.g. a snoozed reminder coming back after the start
+        if timedelta(minutes=-minutes) < RELATIVE_UNDER:
+            return f"started {_duration(-minutes)} ago"
+        return f"started at {clock(local_start)}"
     if timedelta(minutes=minutes) < RELATIVE_UNDER:
-        hours, mins = divmod(minutes, 60)
-        parts = ([_plural(hours, "hour")] if hours else []) + ([_plural(mins, "minute")] if mins else [])
-        return "in " + " ".join(parts)
+        return f"in {_duration(minutes)}"
     if days == 0:
-        return f"today at {_clock(local_start)}"
+        return f"today at {clock(local_start)}"
     if days == 1:
-        return f"tomorrow at {_clock(local_start)}"
-    return local_start.strftime("%a %b ") + f"{local_start.day} at {_clock(local_start)}"
+        return f"tomorrow at {clock(local_start)}"
+    return local_start.strftime("%a %b ") + f"{local_start.day} at {clock(local_start)}"
 
 
 @dataclass(frozen=True)
@@ -96,6 +103,7 @@ class Message:
     detail: str = ""
     late: bool = False
     emoji: str = EMOJI
+    ref: int | None = None  # store.reminders id; lets Telegram attach snooze buttons
 
 
 _MD_SPECIAL = re.compile(r"([\\*_~`|>])")

@@ -35,23 +35,36 @@ def call(token: str, method: str, params: dict | None = None, timeout: float = 1
         raise TelegramError(f"Telegram {method} failed: {e.reason}") from None
 
 
+# Button label -> callback_data prefix. callback_data is "<action>:<ref>".
+BUTTONS = [("💤 10 min", "snooze10"), ("💤 1 hour", "snooze60"), ("✅ Done", "done")]
+
+
+def keyboard(ref: int) -> dict:
+    return {"inline_keyboard": [[{"text": label, "callback_data": f"{action}:{ref}"} for label, action in BUTTONS]]}
+
+
 class TelegramBot:
     name = "telegram"
+    supports_actions = True  # renders Message.ref as snooze buttons
 
     def __init__(self, token: str, chat_id: int | str):
         self.token = token
         self.chat_id = chat_id
+        self.update_offset = 0  # getUpdates cursor (see nudge.snooze)
 
-    def payload(self, text: str) -> dict:
-        return {
+    def payload(self, text: str, ref: int | None = None) -> dict:
+        p = {
             "chat_id": self.chat_id,
             "text": text,
             "parse_mode": "HTML",
             "link_preview_options": {"is_disabled": True},
         }
+        if ref is not None:
+            p["reply_markup"] = keyboard(ref)
+        return p
 
     def send(self, message: Message) -> None:
-        params = self.payload(as_html(message))
+        params = self.payload(as_html(message), message.ref)
         for attempt in range(3):
             try:
                 call(self.token, "sendMessage", params)
@@ -64,7 +77,11 @@ class TelegramBot:
 
 
 def recent_chats(token: str) -> dict[int, str]:
-    """Chats that have messaged the bot recently (for finding chat_id)."""
+    """Chats that have messaged the bot recently (for finding chat_id).
+
+    The running service consumes updates too, and it logs the chat of any
+    incoming message, so check `journalctl -u nudge` if this comes back empty.
+    """
     chats = {}
     for update in call(token, "getUpdates"):
         chat = (update.get("message") or update.get("my_chat_member") or {}).get("chat")
