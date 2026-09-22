@@ -11,19 +11,45 @@ configured list of calendars) and sends each event's **popup** reminders as
 Discord and Telegram messages at the times set in GCal. The spec and plan
 are in `miniPRD.txt`, which is the source of truth for requirements.
 
-## Where we left off (2026-09-21)
+## Where we left off (2026-09-22)
 
-- The MVP is live on the Pi (`nudge.service`, active). M0–M4 are done; see
-  `miniPRD.txt` STATUS and section 6.
-- First live reminder worked: `✨ nudge test ✨` was sent at 09:50:23 on
-  2026-09-22 and arrived in Discord. `TEST EVENT FOR CLAUDE` (Family) is due
-  at 3:50 PM that day.
-- Telegram was added 2026-09-22 (`@adam_nudge_bot`). Both destinations run
-  in parallel for a trial week; afterwards, ask the user which one to keep.
-- Emoji rules and Telegram snooze buttons shipped 2026-09-22.
-- Daily 8:30 AM missing-notification audit shipped 2026-09-22.
-- Candidates for next: a daily agenda digest, and checking all-day `useDefault`
-  behavior (see the input log).
+**Live on the Pi** (`nudge.service`): popup reminders from Family and
+Personal go to Discord and Telegram (`@adam_nudge_bot`). Shipped so far:
+keyword emoji, Telegram snooze buttons (10 min / 1 hour / Done), and a daily
+8:30 AM missing-notification audit (Telegram only). The user has been adding
+popups to their real events (Garbage, Recycling, Bulk Trash, Yard Trash,
+filters, membrane). There are 19 upcoming triggers.
+
+**First thing next session:** check that `TEST EVENT FOR CLAUDE` fired at
+3:50 PM on 2026-09-22 (`journalctl -u nudge --since "2026-09-22 15:45"`), and
+that tomorrow's 8:30 AM audit ran. Then tick the miniPRD M4 box.
+
+**Next up (the user's request): an identity for the app.** A logo/avatar for
+the Telegram bot and the Discord webhook. Ideas to bring:
+- Constraints: both apps crop the avatar to a **circle** and show it at about
+  40 px, on light and dark themes. Telegram: 512×512 PNG via @BotFather
+  `/setuserpic`. Discord: set it in the webhook's settings, or send
+  `avatar_url` and `username` in the payload. Also reuse it for the Google
+  OAuth consent screen (120×120; the current placeholder is
+  `assets/logo.png`, an indigo rounded square with a white bell and an amber
+  dot).
+- Directions:
+  (1) **Evolve the placeholder bell**: a bell whose amber notification dot is
+      the "nudge", in a circle-safe layout. The cheapest, and it's consistent.
+  (2) **The nudge gesture**: a small tapping finger or elbow. Says "nudge"
+      literally, but is harder to read at 40 px.
+  (3) **A friendly character**: a round pebble or bean mascot that leans in
+      to nudge. The most personality, and good for a bot avatar.
+  (4) **Monogram**: a lowercase "n" with a notification dot. Simple and
+      sharp at small sizes.
+  (5) **Calendar + time**: a calendar page with a clock-hand tick.
+- Process: draft 3–4 SVGs, render them at 512 and 40 px on light and dark
+  backgrounds on one comparison page, let the user pick, then export the
+  PNGs and set both avatars.
+
+**Also open:** the trial week of Discord vs Telegram ends about 2026-09-29, so
+ask which to keep. Check all-day `useDefault` behavior (input log). The
+daily agenda digest is still an idea.
 
 ## Working agreements
 

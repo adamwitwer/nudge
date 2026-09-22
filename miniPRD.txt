@@ -15,8 +15,9 @@ PROJECT PLAN  (drafted 2026-09-21)
 STATUS (2026-09-22): Live on the Pi (nudge.service), sending to Discord AND
 Telegram, with keyword emoji, Telegram snooze buttons, and a daily 8:30 AM
 "missing notification" audit. M0-M4 are done. The first live reminder (9:50 AM, 2026-09-22) was
-delivered. Telegram was added the same day. Next: a week-long trial of
-both, then drop whichever gets ignored.
+delivered. Telegram was added the same day. Next: an app identity (logo/avatar
+for Telegram and Discord), then decide which destination(s) to keep after
+the trial week (about 2026-09-29).
 Repo: https://github.com/adamwitwer/nudge
 
 1. FEASIBILITY SUMMARY
@@ -245,6 +246,8 @@ M5  Hardening / extensions (as needed)
     - [x] Daily "missing notification" audit, 8:30 AM via Telegram
       (2026-09-22; the user's idea)
     - [ ] Daily "today's agenda" digest message (nice-to-have)
+    - [ ] App identity: a logo/avatar for the Telegram bot and Discord webhook
+      (next session; see the directions in AGENTS.md)
     - [ ] Verify how all-day events with useDefault behave. The API's
       defaultReminders are timed-event defaults; GCal's separate all-day
       defaults may not be exposed.
