@@ -1,7 +1,7 @@
 # nudge
 
 A small Raspberry Pi service that reads your Google Calendar **popup**
-reminders and sends them to Discord (Telegram planned) at the times set in
+reminders and sends them to Discord and/or Telegram at the times set in
 GCal.
 
 ```
@@ -18,8 +18,11 @@ GCal.
 3. `.venv/bin/python -m nudge auth` (one-time browser sign-in)
 4. `.venv/bin/python -m nudge calendars`, then copy `config.example.toml`
    to `~/.config/nudge/config.toml` (or the project folder) and fill in calendar IDs and your
-   Discord webhook URL.
-5. `.venv/bin/python -m nudge test` sends a sample message.
+   Discord webhook URL and/or Telegram bot token. For Telegram, message your
+   bot once, then run `.venv/bin/python -m nudge telegram-chats` to get your
+   `chat_id`.
+5. `.venv/bin/python -m nudge test` sends a sample message to every
+   configured destination.
 6. `.venv/bin/python -m nudge upcoming` shows what will fire and when.
 7. `.venv/bin/python -m nudge run` runs the service.
 

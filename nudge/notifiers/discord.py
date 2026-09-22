@@ -7,6 +7,8 @@ import time
 import urllib.error
 import urllib.request
 
+from ..format import Message, as_markdown
+
 
 class DiscordWebhook:
     name = "discord"
@@ -19,8 +21,8 @@ class DiscordWebhook:
         # allowed_mentions: never let an event title ping @everyone / roles.
         return {"content": text, "allowed_mentions": {"parse": []}}
 
-    def send(self, text: str) -> None:
-        body = json.dumps(self.payload(text)).encode()
+    def send(self, message: Message) -> None:
+        body = json.dumps(self.payload(as_markdown(message))).encode()
         for attempt in range(3):
             req = urllib.request.Request(
                 self.url,

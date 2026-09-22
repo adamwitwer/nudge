@@ -68,10 +68,23 @@ def cmd_test(args) -> None:
     cfg = config.load()
     now = datetime.now(timezone.utc)
     sample = Trigger("test", "test", "nudge test message", now + timedelta(minutes=10), False, 10, now)
-    text = format.message(sample, now, ZoneInfo("UTC"))  # relative wording; tz unused
+    msg = format.message(sample, now, ZoneInfo("UTC"))  # relative wording; tz unused
     for n in _notifiers(cfg):
-        n.send(text)
-        print(f"sent via {n.name}: {text}")
+        n.send(msg)
+        print(f"sent via {n.name}: {msg.title} · {msg.detail}")
+
+
+def cmd_telegram_chats(args) -> None:
+    from .notifiers.telegram import recent_chats
+
+    cfg = config.load()
+    if not cfg.telegram_bot_token:
+        raise config.ConfigError("Set telegram.bot_token first")
+    chats = recent_chats(cfg.telegram_bot_token)
+    if not chats:
+        print("No messages yet. Send your bot any message in Telegram, then re-run.")
+    for chat_id, name in chats.items():
+        print(f"chat_id = {chat_id}    # {name}")
 
 
 def cmd_run(args) -> None:
@@ -99,6 +112,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("test", help="send a sample notification")
     p.set_defaults(func=cmd_test)
+
+    p = sub.add_parser("telegram-chats", help="show chat IDs that have messaged your bot")
+    p.set_defaults(func=cmd_telegram_chats)
 
     p = sub.add_parser("run", help="run the reminder service (foreground)")
     p.set_defaults(func=cmd_run)

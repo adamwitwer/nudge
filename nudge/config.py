@@ -22,6 +22,8 @@ class Config:
     poll: timedelta
     grace: timedelta
     discord_webhook_url: str | None
+    telegram_bot_token: str | None = None
+    telegram_chat_id: int | str | None = None
 
 
 def load(path: Path = CONFIG_FILE) -> Config:
@@ -40,9 +42,17 @@ def load(path: Path = CONFIG_FILE) -> Config:
     if webhook and not webhook.startswith("https://"):
         raise ConfigError(f"{path}: discord.webhook_url doesn't look like a URL")
 
+    telegram = raw.get("telegram", {})
+    token = telegram.get("bot_token")
+    if token and ":" not in token:
+        raise ConfigError(f"{path}: telegram.bot_token doesn't look like a bot token")
+    chat_id = telegram.get("chat_id")
+
     return Config(
         calendars=calendars,
         poll=timedelta(minutes=raw.get("poll_minutes", 5)),
         grace=timedelta(minutes=raw.get("grace_minutes", 15)),
         discord_webhook_url=webhook,
+        telegram_bot_token=token,
+        telegram_chat_id=chat_id,
     )

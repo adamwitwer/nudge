@@ -12,9 +12,10 @@ The messages would need to be nicely formatted and might include emoji and other
 PROJECT PLAN  (drafted 2026-09-21)
 ================================================================================
 
-STATUS (2026-09-21): MVP is live on the Pi (nudge.service). M0-M4 are done.
-Next: the first real reminders fire 2026-09-22 at 9:50 AM and 3:50 PM ET.
-Then a week of comparison against GCal, then M5 / Telegram.
+STATUS (2026-09-22): Live on the Pi (nudge.service), sending to Discord AND
+Telegram. M0-M4 are done. The first live reminder (9:50 AM, 2026-09-22) was
+delivered. Telegram was added the same day. Next: a week-long trial of
+both, then drop whichever gets ignored.
 Repo: https://github.com/adamwitwer/nudge
 
 1. FEASIBILITY SUMMARY
@@ -85,8 +86,9 @@ Telegram (bot)
     up your chat_id.
   - MarkdownV2 escaping is fiddly. Use `parse_mode=HTML` instead.
 
-DECISION (2026-09-21): Discord first, since it's already set up. Telegram
-comes later, behind the same Notifier interface.
+DECISION (2026-09-21): Discord first, since it's already set up.
+UPDATE (2026-09-22): Telegram added. Both run in parallel during a trial
+week; turning one off is one config section.
 
 Original recommendation: build a small Notifier interface and ship BOTH early.
 Each is about 30 lines. If you want to pick one for the MVP, use Telegram if
@@ -129,14 +131,20 @@ Package layout (run as `python -m nudge <command>`):
                         wall-clock math, DST, declined and cancelled events.
   nudge/store.py        SQLite `handled(key, status sent|skipped, at)`,
                         pruned after 60 days.
-                        key = calendar_id:event_id:start:minutes. A moved
-                        event gets a new key and fires again.
-  nudge/format.py       message text + Discord markdown escaping
+                        key = calendar_id:event_id:start:minutes|notifier
+                        A moved event gets a new key and fires again. The
+                        per-notifier suffix means a failed destination is
+                        retried alone.
+  nudge/format.py       structured Message(title, detail, late, emoji) plus
+                        renderers: as_markdown (Discord), as_html (Telegram)
   nudge/notifiers/      Notifier protocol; discord.py (webhook, mentions
-                        disabled, 429 retry). telegram.py: TODO.
+                        disabled, 429 retry); telegram.py (Bot API
+                        sendMessage, parse_mode=HTML, 429 retry; errors
+                        never include the token-bearing URL)
   nudge/config.py       config.toml loader and validation
   nudge/engine.py       service loop
-  nudge/__main__.py     CLI: auth | calendars | upcoming | test | run
+  nudge/__main__.py     CLI: auth | calendars | upcoming | test |
+                        telegram-chats | run
   tests/                pytest: triggers, format, engine, config
   systemd/nudge.service
 
@@ -149,13 +157,15 @@ Service loop:
                               late by at most grace (15 min): send; mark sent
                                 (tagged "(late)" if more than 2 min late)
                               later than that: mark skipped and log
-                              send failed: leave unmarked, retry next tick
+                              send failed: leave that notifier unmarked and
+                                retry it alone next tick
   Google auth failure:      one Discord alert telling you to re-run
                             `nudge auth`, then retry every poll.
   Time zone:                taken from the Google account setting, not from
                             each calendar (the Family calendar is set to UTC).
 
-Config and secrets (config.toml, credentials.json, token.json, state.db),
+Config and secrets (config.toml, with the Discord webhook and Telegram bot
+token + chat_id; credentials.json, token.json, state.db),
 in lookup order:
   1. $NUDGE_CONFIG_DIR
   2. the project folder, if it contains config.toml (the Pi: ~/Projects/nudge)
@@ -197,15 +207,16 @@ M3  Notifiers + formatting [DONE]
     - Discord webhook, format.py, `nudge test`
 M4  Pi deployment [DONE 2026-09-21]
     - Running as nudge.service on the Pi
-    - [ ] First live reminders on 2026-09-22 (9:50 AM Personal, 3:50 PM Family)
+    - [x] First live reminder on 2026-09-22 (9:50 AM Personal): delivered
+    - [ ] 3:50 PM Family reminder, the same day
     - [ ] Run for a week alongside GCal's native notifications and compare
     - [ ] Add popup notifications to the recurring Trash Night / Yard Trash
       events, and consider default popups per calendar
 M5  Hardening / extensions (as needed)
     - [x] Alert via the notifier if Google auth fails
     - [x] Retry on Discord 429 and on send failure (next tick, within grace)
-    - [ ] Telegram notifier (track sent state per notifier, to avoid
-      re-sending when one of several fails)
+    - [x] Telegram notifier, with sent state tracked per notifier
+      (2026-09-22)
     - [ ] Daily "today's agenda" digest message (nice-to-have)
     - [ ] Telegram inline "Snooze" buttons (stretch)
     - [ ] Emoji keyword rules

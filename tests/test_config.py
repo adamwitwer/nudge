@@ -22,3 +22,14 @@ def test_requires_calendars(tmp_path):
 def test_rejects_placeholder_webhook(tmp_path):
     with pytest.raises(ConfigError):
         load(write(tmp_path, 'calendars = ["a"]\n[discord]\nwebhook_url = "PASTE_WEBHOOK_URL_HERE"\n'))
+
+
+def test_telegram_optional_and_parsed(tmp_path):
+    cfg = load(write(tmp_path, 'calendars = ["a"]\n[telegram]\nbot_token = "123:abc"\nchat_id = 42\n'))
+    assert (cfg.telegram_bot_token, cfg.telegram_chat_id) == ("123:abc", 42)
+    assert load(write(tmp_path, 'calendars = ["a"]\n')).telegram_bot_token is None
+
+
+def test_rejects_placeholder_bot_token(tmp_path):
+    with pytest.raises(ConfigError):
+        load(write(tmp_path, 'calendars = ["a"]\n[telegram]\nbot_token = "PASTE_BOT_TOKEN_HERE"\n'))

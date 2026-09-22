@@ -13,3 +13,9 @@ grace_minutes = 15    # still send a missed reminder if it's at most this late
 [discord]
 # Channel settings > Integrations > Webhooks > New Webhook > Copy URL
 webhook_url = "https://discord.com/api/webhooks/..."
+
+[telegram]
+# Optional. Create a bot with @BotFather, paste its token, send the bot any
+# message, then run: python -m nudge telegram-chats   (prints your chat_id)
+bot_token = "123456789:AA..."
+chat_id = 123456789

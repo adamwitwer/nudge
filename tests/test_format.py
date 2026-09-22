@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from nudge.format import escape_markdown, lead_text, message
+from nudge.format import Message, as_html, as_markdown, escape_markdown, lead_text, message
 from nudge.triggers import Trigger
 
 NY = ZoneInfo("America/New_York")
@@ -38,8 +38,19 @@ def test_all_day():
     assert lead(all_day_date=(2026, 9, 29)) == "on Tue Sep 29"
 
 
-def test_message_escapes_title_and_marks_late():
-    t = Trigger("c", "e", "Pay *rent*_now", NOW + timedelta(hours=1), False, 60, NOW)
-    assert message(t, NOW, NY) == "⏰ **Pay \\*rent\\*\\_now** · in 1 hour"
-    assert message(t, NOW, NY, late=True).endswith(" _(late)_")
+def test_message_is_structured():
+    t = Trigger("c", "e", "Dentist", NOW + timedelta(hours=1), False, 60, NOW)
+    assert message(t, NOW, NY) == Message("Dentist", "in 1 hour")
+    assert message(t, NOW, NY, late=True).late
+
+
+def test_markdown_rendering_escapes_title_and_marks_late():
+    assert as_markdown(Message("Pay *rent*_now", "in 1 hour")) == "⏰ **Pay \\*rent\\*\\_now** · in 1 hour"
+    assert as_markdown(Message("x", "in 5 minutes", late=True)).endswith(" _(late)_")
     assert escape_markdown("[Reminder] Trash Night") == "[Reminder] Trash Night"
+
+
+def test_html_rendering_escapes_title_and_marks_late():
+    assert as_html(Message("Tom & Jerry <3", "tomorrow")) == "⏰ <b>Tom &amp; Jerry &lt;3</b> · tomorrow"
+    assert as_html(Message("x", "now", late=True)) == "⏰ <b>x</b> · now <i>(late)</i>"
+    assert as_html(Message("alert", emoji="⚠️")) == "⚠️ <b>alert</b>"

@@ -8,7 +8,7 @@ and suggest improvements, not just execute. Record that input here.
 
 **nudge** is a small service for a Raspberry Pi. It reads Google Calendar events (from a
 configured list of calendars) and sends each event's **popup** reminders as
-Discord messages (Telegram planned) at the times set in GCal. The spec and plan
+Discord and Telegram messages at the times set in GCal. The spec and plan
 are in `miniPRD.txt`, which is the source of truth for requirements.
 
 ## Where we left off (2026-09-21)
@@ -18,7 +18,8 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
 - First live reminder worked: `✨ nudge test ✨` was sent at 09:50:23 on
   2026-09-22 and arrived in Discord. `TEST EVENT FOR CLAUDE` (Family) is due
   at 3:50 PM that day.
-- Next up: the Telegram notifier. The user now has a Telegram account.
+- Telegram was added 2026-09-22 (`@adam_nudge_bot`). Both destinations run
+  in parallel for a trial week; afterwards, ask the user which one to keep.
 - Candidates for next: Telegram notifier, daily agenda digest, emoji rules,
   and popups on the recurring Trash Night / Yard Trash events.
 
@@ -28,6 +29,8 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
   and a few dependencies over frameworks.
 - **Public repo: never commit secrets.** OAuth client secrets, `token.json`,
   webhook URLs, bot tokens, chat IDs, and real calendar IDs stay out of git.
+  Never print the Telegram token: it's embedded in API URLs, so keep URLs
+  out of errors and logs.
   Commit `config.example.toml` only.
 - Target is Python 3.11+ (the Pi has 3.11.2; the dev Mac has 3.14). Don't use
   newer syntax without checking.
@@ -59,9 +62,10 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-22 | Telegram notifier added. Messages are now structured (`format.Message`) and rendered per destination (Discord markdown, Telegram HTML). The dedupe key gained a `|notifier` suffix. Existing rows no longer match, which was harmless at deploy time because no trigger was inside the grace window. | done |
 | 2026-09-21 | M4: deployed to the Pi as `nudge.service` (enabled, active). Verified `upcoming` and `test` from the Pi. First live check: TEST EVENT FOR CLAUDE popup at 3:50 PM ET on 2026-09-22. Only one machine should run `nudge run`, or you get double sends. | done |
 | 2026-09-21 | M2+M3 done: SQLite dedupe store, 30 s tick / 5 min poll loop, Discord webhook (mentions disabled so a title can't ping @everyone), `nudge test` and `nudge run`. The auth-failure alert (from M5) is also in. Sample message delivered to Discord. | done |
-| 2026-09-21 | With more than one notifier, a send failure on the second means a retry re-sends on the first. That's fine while Discord is the only notifier. Track per-notifier sent state when Telegram is added. | open (Telegram) |
+| 2026-09-21 | With more than one notifier, a send failure on the second means a retry re-sends on the first. That's fine while Discord is the only notifier. Track per-notifier sent state when Telegram is added. | done (key suffix `|notifier`) |
 | 2026-09-21 | M1 verified against the real API: popup and email overrides come back exactly as set in GCal. The Family calendar's own tz is UTC, so display and all-day math use the **account** tz (`settings.get('timezone')`) instead. | done |
 | 2026-09-21 | Existing recurring events (Trash Night, Yard Trash) use **email** reminders only, so nudge won't fire for them until popups are added. | open: user to update events |
 | 2026-09-21 | Tested the secret iCal feed as an alternative to OAuth. **Rejected:** a test event with popup and email reminders came through with no VALARMs, and 0 of 23 events on the family calendar had reminders. The feed can't be trusted for reminder data. Proceed with OAuth (with branding and PRIVACY.md filled in). | declined |

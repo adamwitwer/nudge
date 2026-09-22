@@ -41,23 +41,28 @@ def process_due(
     tz: ZoneInfo,
     grace: timedelta,
 ) -> None:
+    """Send due triggers. Tracked per notifier, so one failing is retried alone."""
     for t in sorted(triggers, key=lambda t: t.fire_at):
-        if t.fire_at > now or store.seen(t.key):
+        if t.fire_at > now:
+            continue
+        pending = [n for n in notifiers if not store.seen(f"{t.key}|{n.name}")]
+        if not pending:
             continue
         lateness = now - t.fire_at
         if lateness > grace:
             log.info("skipping %r (%d min late)", t.title, lateness.total_seconds() // 60)
-            store.mark(t.key, "skipped", now)
+            for n in pending:
+                store.mark(f"{t.key}|{n.name}", "skipped", now)
             continue
-        text = format.message(t, now, tz, late=lateness > LATE_AFTER)
-        try:
-            for n in notifiers:
-                n.send(text)
-        except Exception as e:  # leave unmarked; retried next tick until grace runs out
-            log.warning("send failed for %r: %s", t.title, e)
-            continue
-        log.info("sent %r (%d min before)", t.title, t.minutes_before)
-        store.mark(t.key, "sent", now)
+        msg = format.message(t, now, tz, late=lateness > LATE_AFTER)
+        for n in pending:
+            try:
+                n.send(msg)
+            except Exception as e:  # leave unmarked; retried next tick until grace runs out
+                log.warning("%s send failed for %r: %s", n.name, t.title, e)
+                continue
+            log.info("sent %r via %s (%d min before)", t.title, n.name, t.minutes_before)
+            store.mark(f"{t.key}|{n.name}", "sent", now)
 
 
 def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
@@ -80,7 +85,11 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
             except (gcal.AuthError, RefreshError) as e:  # refresh can also fail mid-run
                 log.error("%s", e)
                 if not auth_alerted:
-                    _alert(notifiers, f"⚠️ nudge can't read Google Calendar: re-run `python -m nudge auth` on the Pi. ({e})")
+                    _alert(notifiers, format.Message(
+                        "nudge can't read Google Calendar",
+                        f"re-run: python -m nudge auth ({e})",
+                        emoji="⚠️",
+                    ))
                     auth_alerted = True
                 svc = None
                 last_poll = now  # retry on the next poll interval, not every tick
@@ -92,9 +101,9 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
         time.sleep(TICK_SECONDS)
 
 
-def _alert(notifiers: list[Notifier], text: str) -> None:
+def _alert(notifiers: list[Notifier], message: format.Message) -> None:
     for n in notifiers:
         try:
-            n.send(text)
+            n.send(message)
         except Exception as e:
             log.warning("alert via %s failed: %s", n.name, e)

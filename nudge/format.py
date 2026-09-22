@@ -1,8 +1,14 @@
-"""Message text. MVP: title plus how soon it starts."""
+"""Message content. MVP: title plus how soon it starts.
+
+`message()` returns a structured Message; each notifier renders it in its own
+markup (Discord markdown, Telegram HTML).
+"""
 
 from __future__ import annotations
 
+import html
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -46,6 +52,14 @@ def lead_text(start: datetime, all_day: bool, now: datetime, tz: ZoneInfo) -> st
     return local_start.strftime("%a %b ") + f"{local_start.day} at {_clock(local_start)}"
 
 
+@dataclass(frozen=True)
+class Message:
+    title: str
+    detail: str = ""
+    late: bool = False
+    emoji: str = EMOJI
+
+
 _MD_SPECIAL = re.compile(r"([\\*_~`|>])")
 
 
@@ -53,8 +67,25 @@ def escape_markdown(text: str) -> str:
     return _MD_SPECIAL.sub(r"\\\1", text)
 
 
-def message(trigger: Trigger, now: datetime, tz: ZoneInfo, late: bool = False) -> str:
-    text = f"{EMOJI} **{escape_markdown(trigger.title)}** · {lead_text(trigger.start, trigger.all_day, now, tz)}"
-    if late:
+def as_markdown(m: Message) -> str:
+    """Discord."""
+    text = f"{m.emoji} **{escape_markdown(m.title)}**"
+    if m.detail:
+        text += f" · {escape_markdown(m.detail)}"
+    if m.late:
         text += " _(late)_"
     return text
+
+
+def as_html(m: Message) -> str:
+    """Telegram (parse_mode=HTML)."""
+    text = f"{m.emoji} <b>{html.escape(m.title, quote=False)}</b>"
+    if m.detail:
+        text += f" · {html.escape(m.detail, quote=False)}"
+    if m.late:
+        text += " <i>(late)</i>"
+    return text
+
+
+def message(trigger: Trigger, now: datetime, tz: ZoneInfo, late: bool = False) -> Message:
+    return Message(trigger.title, lead_text(trigger.start, trigger.all_day, now, tz), late)
