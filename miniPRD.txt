@@ -160,21 +160,21 @@ config.toml, token.json, credentials.json, *.db, and .env.
 
 6. MILESTONES
 -------------
-M0  Setup (≈1 hr)
+M0  Setup [DONE] (≈1 hr)
     - Google Cloud project, enable Calendar API, create an OAuth client of
       type "Desktop app", set the consent screen to "In production"
     - Create the Discord webhook and/or Telegram bot, and find the chat_id
-M1  Calendar read spike (≈1–2 hrs)
+M1  Calendar read spike [DONE] (≈1–2 hrs)
     - Script that authenticates and prints upcoming events with their
       effective reminders (including defaults and all-day math). Validate
       against what the GCal UI shows for a handful of real events.
-M2  Trigger engine + store (≈2–3 hrs)
+M2  Trigger engine + store [DONE] (≈2–3 hrs)
     - schedule.py + store.py + main loop, printing to the console instead of
       sending
     - Unit tests for trigger computation: timed events, all-day events,
       useDefault, multiple reminders, DST boundary, moved events, declined
       events, grace window
-M3  Notifiers + formatting (≈2 hrs)
+M3  Notifiers + formatting [DONE] (≈2 hrs)
     - Discord and Telegram senders, message templates, emoji rules
     - A `--test` CLI flag that sends a sample notification
 M4  Pi deployment (≈1 hr)

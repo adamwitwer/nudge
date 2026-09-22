@@ -1,0 +1,15 @@
+# nudge configuration. Copy to ~/.config/nudge/config.toml and fill in.
+# That file holds secrets: keep it out of git (chmod 600).
+
+# Calendar IDs to watch. Find them with: python -m nudge calendars
+calendars = [
+    "you@gmail.com",
+    "xxxxxxxxxxxxxxxx@group.calendar.google.com",
+]
+
+poll_minutes = 5      # how often to re-read Google Calendar
+grace_minutes = 15    # still send a missed reminder if it's at most this late
+
+[discord]
+# Channel settings > Integrations > Webhooks > New Webhook > Copy URL
+webhook_url = "https://discord.com/api/webhooks/..."

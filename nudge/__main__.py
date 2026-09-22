@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from . import gcal
-from .triggers import triggers_for_event
+from . import config, engine, format, gcal, notifiers
+from .store import Store
+from .triggers import Trigger, triggers_for_event
 
 FMT = "%a %b %d %I:%M %p"
 
@@ -32,6 +34,8 @@ def cmd_upcoming(args) -> None:
     svc = gcal.service()
     if args.calendar:
         cal_ids = args.calendar
+    elif config.CONFIG_FILE.exists():
+        cal_ids = config.load().calendars
     else:
         cal_ids = [c["id"] for c in gcal.list_calendars(svc) if c.get("selected")]
     now = datetime.now(timezone.utc)
@@ -53,6 +57,29 @@ def cmd_upcoming(args) -> None:
                 print(f"    -> popup {t.minutes_before} min: fires {t.fire_at.astimezone(tz).strftime(FMT)}{late}")
 
 
+def _notifiers(cfg: config.Config):
+    ns = notifiers.from_config(cfg)
+    if not ns:
+        raise config.ConfigError("No notifier configured (set discord.webhook_url)")
+    return ns
+
+
+def cmd_test(args) -> None:
+    cfg = config.load()
+    now = datetime.now(timezone.utc)
+    sample = Trigger("test", "test", "nudge test message", now + timedelta(minutes=10), False, 10, now)
+    text = format.message(sample, now, ZoneInfo("UTC"))  # relative wording; tz unused
+    for n in _notifiers(cfg):
+        n.send(text)
+        print(f"sent via {n.name}: {text}")
+
+
+def cmd_run(args) -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    cfg = config.load()
+    engine.run(cfg, _notifiers(cfg), Store())
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nudge")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -67,13 +94,21 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("upcoming", help="show upcoming events and computed popup triggers")
     p.add_argument("--days", type=int, default=14)
-    p.add_argument("--calendar", action="append", help="calendar ID (repeatable); default: all visible")
+    p.add_argument("--calendar", action="append", help="calendar ID (repeatable); default: config, else all visible")
     p.set_defaults(func=cmd_upcoming)
+
+    p = sub.add_parser("test", help="send a sample notification")
+    p.set_defaults(func=cmd_test)
+
+    p = sub.add_parser("run", help="run the reminder service (foreground)")
+    p.set_defaults(func=cmd_run)
 
     args = parser.parse_args(argv)
     try:
         args.func(args)
-    except gcal.AuthError as e:
+    except KeyboardInterrupt:
+        return 130
+    except (gcal.AuthError, config.ConfigError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     return 0
