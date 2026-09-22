@@ -15,10 +15,10 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
 
 - The MVP is live on the Pi (`nudge.service`, active). M0–M4 are done; see
   `miniPRD.txt` STATUS and section 6.
-- First real reminders on 2026-09-22 ET: `✨ nudge test ✨` at 9:50 AM
-  (Personal) and `TEST EVENT FOR CLAUDE` at 3:50 PM (Family). The user will
-  report back. If they didn't arrive, start with `journalctl -u nudge` on the
-  Pi.
+- First live reminder worked: `✨ nudge test ✨` was sent at 09:50:23 on
+  2026-09-22 and arrived in Discord. `TEST EVENT FOR CLAUDE` (Family) is due
+  at 3:50 PM that day.
+- Next up: the Telegram notifier. The user now has a Telegram account.
 - Candidates for next: Telegram notifier, daily agenda digest, emoji rules,
   and popups on the recurring Trash Night / Yard Trash events.
 
@@ -41,8 +41,10 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
   (gitignored), and the unit in `systemd/nudge.service` copied to
   `/etc/systemd/system/`. Config lookup: `$NUDGE_CONFIG_DIR`, then the
   project folder if it has `config.toml`, then `~/.config/nudge` (dev Mac).
-- Deploy an update (LAN .167 or Tailscale): `ssh adam@192.168.50.167 'cd ~/Projects/nudge && git pull
+- Deploy an update: `ssh adam@100.107.81.122 'cd ~/Projects/nudge && git pull
   && venv/bin/pip install -q -e . && sudo systemctl restart nudge'`
+- Reach the Pi over **Tailscale** (100.107.81.122) by default. The LAN
+  address (.167) only works when the Mac is at home.
 - Gotcha (macOS, Python 3.13+): macOS can flag the venv's editable-install
   `.pth` as hidden, and Python then skips it. pytest sets `pythonpath = ["."]`,
   and `python -m nudge` works from the repo root regardless.
