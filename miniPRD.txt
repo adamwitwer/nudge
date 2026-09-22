@@ -247,8 +247,13 @@ M5  Hardening / extensions (as needed)
     - [x] Daily "missing notification" audit, 8:30 AM via Telegram
       (2026-09-22; the user's idea)
     - [ ] Daily "today's agenda" digest message (nice-to-have)
-    - [ ] App identity: a logo/avatar for the Telegram bot and Discord webhook
-      (next session; see the directions in AGENTS.md)
+    - [x] App identity (2026-09-22): "Ping" mark, an amber dot with two
+      waves on a deep-indigo disc. Source `assets/avatar.svg`, rendered to
+      avatar-512.png / avatar-120.png. Palette: indigo #231F5E disc,
+      amber #F5A524 dot, ivory #FAF9F5 and periwinkle #A9A7F2 waves.
+      Discord webhook name + avatar set via the API; Telegram bot name and
+      descriptions set via the Bot API; the Telegram photo and the Google
+      consent-screen logo are manual uploads.
     - [ ] Verify how all-day events with useDefault behave. The API's
       defaultReminders are timed-event defaults; GCal's separate all-day
       defaults may not be exposed.

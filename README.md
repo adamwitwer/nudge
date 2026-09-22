@@ -39,6 +39,21 @@ notification** (which would never fire) and sends the list to Telegram, but
 only if there's something on it. Put `#nonudge` in an event's description to
 leave it out. `nudge audit` runs the same check by hand.
 
+## Identity
+
+The avatar is `assets/avatar.svg`: an amber dot with two waves leaving it, on
+a deep-indigo disc. Re-render after editing:
+
+```
+rsvg-convert -w 512 -h 512 assets/avatar.svg -o assets/avatar-512.png
+rsvg-convert -w 120 -h 120 assets/avatar.svg -o assets/avatar-120.png
+```
+
+Use `rsvg-convert` (`brew install librsvg`), not ImageMagick: ImageMagick's
+built-in SVG renderer silently drops stroked paths and arcs.
+512 px is the Telegram bot photo and the Discord webhook avatar; 120 px is
+the Google OAuth consent screen.
+
 ## Running on a Raspberry Pi
 
 ```

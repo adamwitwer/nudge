@@ -25,28 +25,14 @@ filters, membrane). There are 19 upcoming triggers.
 M4 is fully ticked. Still to confirm: the first *scheduled* 8:30 AM audit
 (2026-09-23; today's ran at 12:32 as a catch-up).
 
-**Next up (the user's request): an identity for the app.** A logo/avatar for
-the Telegram bot and the Discord webhook. Ideas to bring:
-- Constraints: both apps crop the avatar to a **circle** and show it at about
-  40 px, on light and dark themes. Telegram: 512×512 PNG via @BotFather
-  `/setuserpic`. Discord: set it in the webhook's settings, or send
-  `avatar_url` and `username` in the payload. Also reuse it for the Google
-  OAuth consent screen (120×120; the current placeholder is
-  `assets/logo.png`, an indigo rounded square with a white bell and an amber
-  dot).
-- Directions:
-  (1) **Evolve the placeholder bell**: a bell whose amber notification dot is
-      the "nudge", in a circle-safe layout. The cheapest, and it's consistent.
-  (2) **The nudge gesture**: a small tapping finger or elbow. Says "nudge"
-      literally, but is harder to read at 40 px.
-  (3) **A friendly character**: a round pebble or bean mascot that leans in
-      to nudge. The most personality, and good for a bot avatar.
-  (4) **Monogram**: a lowercase "n" with a notification dot. Simple and
-      sharp at small sizes.
-  (5) **Calendar + time**: a calendar page with a clock-hand tick.
-- Process: draft 3–4 SVGs, render them at 512 and 40 px on light and dark
-  backgrounds on one comparison page, let the user pick, then export the
-  PNGs and set both avatars.
+**Identity done (2026-09-22):** the "Ping" mark lives in `assets/avatar.svg`
+(deep-indigo disc, amber dot, ivory + periwinkle waves), rendered to
+`avatar-512.png` and `avatar-120.png` with `rsvg-convert`. The old bell
+(`assets/logo.*`) is gone. Set already: the Discord webhook's name and avatar,
+and the Telegram bot's name and descriptions. **Still manual for the user:**
+the Telegram bot photo (@BotFather `/setuserpic`, send `avatar-512.png`) and
+the Google OAuth consent-screen logo (`avatar-120.png`). Concept canvas:
+https://claude.ai/artifact/BEnwigXDHJs3DiPw2qE8dk
 
 **Also open:** the trial week of Discord vs Telegram ends about 2026-09-29, so
 ask which to keep. Check all-day `useDefault` behavior (input log). The
@@ -91,6 +77,7 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-22 | Identity: the user picked the "Ping" concept (amber dot + two waves) from four; the disc went deep indigo #231F5E so the circle keeps its edge on dark chat backgrounds. Gotcha: **ImageMagick cannot render stroked paths or SVG arcs** (it drew only the fills), so `rsvg-convert` (brew librsvg) renders the PNGs. Discord webhook PATCH needs a `User-Agent` header or Cloudflare returns 403 code 1010. | done |
 | 2026-09-22 | The user's idea: a daily audit for events with no popup. Built at 8:30 AM, Telegram only, 14 days, `#nonudge` opt-out, recurring listed once, email-only flagged. Against real data, the 14-day window is clean; over 365 days, 3 yearly birthday/anniversary events have no popup. | done |
 | 2026-09-22 | Before recommending per-calendar default notifications: check what the API returns for an **all-day** event using defaults. `calendarList.defaultReminders` covers timed events only, so nudge may wrongly apply e.g. "10 min before" to all-day events (firing at 11:50 PM the night before). | open |
 | 2026-09-22 | Telegram snooze: the user chose 10 min / 1 hour / Done, with re-sends to Telegram only. The long-poll replaces the tick sleep. Gotchas: (1) only one getUpdates consumer at a time, so running `telegram-chats` on the Mac while the Pi service runs can 409 or miss messages (the service logs incoming chat IDs instead); (2) a `nudge test` sent from the Mac has buttons the Pi doesn't know (they answer "expired"), so run `nudge test` on the Pi. | done |

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="nudge">
+  <title>nudge</title>
+  <!-- The waves are circular arcs written as cubic Beziers: ImageMagick's
+       built-in SVG renderer silently drops elliptical-arc (A) commands.
+       Render with: rsvg-convert -w 512 -h 512 avatar.svg -o avatar-512.png -->
+  <rect width="512" height="512" rx="256" fill="#231F5E"/>
+  <circle cx="182" cy="256" r="48" fill="#F5A524"/>
+  <path d="M262 180 C306 221 306 291 262 332" fill="none" stroke="#FAF9F5" stroke-width="30" stroke-linecap="round"/>
+  <path d="M324 132 C392 197 392 315 324 380" fill="none" stroke="#A9A7F2" stroke-width="30" stroke-linecap="round"/>
+</svg>
