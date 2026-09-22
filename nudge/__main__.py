@@ -35,12 +35,12 @@ def cmd_upcoming(args) -> None:
     else:
         cal_ids = [c["id"] for c in gcal.list_calendars(svc) if c.get("selected")]
     now = datetime.now(timezone.utc)
+    tz = ZoneInfo(gcal.user_timezone(svc))
     for cal_id in cal_ids:
         cal = gcal.get_calendar(svc, cal_id)
-        tz = ZoneInfo(cal.get("timeZone", "UTC"))
         defaults = cal.get("defaultReminders", [])
         events = gcal.list_events(svc, cal_id, now, now + timedelta(days=args.days))
-        print(f"\n=== {cal.get('summary', cal_id)}  ({len(events)} events, tz {tz.key}) ===")
+        print(f"\n=== {cal.get('summary', cal_id)}  ({len(events)} events; showing {tz.key}, calendar tz {cal.get('timeZone')}) ===")
         for ev in events:
             triggers = triggers_for_event(ev, cal_id, defaults, tz)
             when = ev["start"].get("date") or datetime.fromisoformat(ev["start"]["dateTime"]).astimezone(tz).strftime(FMT)

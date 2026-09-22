@@ -71,6 +71,15 @@ def list_calendars(svc) -> list[dict]:
     return _paged(svc.calendarList().list)
 
 
+def user_timezone(svc) -> str:
+    """The account's time zone setting (Settings > Time zone in GCal).
+
+    Preferred over each calendar's own timeZone, which can be stale
+    (e.g. a shared calendar left on UTC).
+    """
+    return svc.settings().get(setting="timezone").execute()["value"]
+
+
 def get_calendar(svc, calendar_id: str) -> dict:
     """calendarList entry: includes timeZone and defaultReminders."""
     return svc.calendarList().get(calendarId=calendar_id).execute()
