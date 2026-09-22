@@ -11,6 +11,11 @@ GCal.
 The emoji comes from keywords in the title (trash 🗑️, birthday 🎂,
 dentist 🦷, ...). You can add your own under `[emoji.keywords]` in the config.
 
+On Telegram, each reminder has **💤 10 min**, **💤 1 hour** and **✅ Done**
+buttons. A snoozed reminder comes back (to Telegram only) with fresh wording.
+Run `nudge test` on the machine that runs the service, because button taps
+are looked up in its local state.
+
 ## Setup
 
 1. Google Cloud: enable the Calendar API and create an OAuth client of type

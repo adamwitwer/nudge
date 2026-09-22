@@ -13,7 +13,7 @@ PROJECT PLAN  (drafted 2026-09-21)
 ================================================================================
 
 STATUS (2026-09-22): Live on the Pi (nudge.service), sending to Discord AND
-Telegram. M0-M4 are done. The first live reminder (9:50 AM, 2026-09-22) was
+Telegram, with keyword emoji and Telegram snooze buttons. M0-M4 are done. The first live reminder (9:50 AM, 2026-09-22) was
 delivered. Telegram was added the same day. Next: a week-long trial of
 both, then drop whichever gets ignored.
 Repo: https://github.com/adamwitwer/nudge
@@ -129,7 +129,9 @@ Package layout (run as `python -m nudge <command>`):
   nudge/triggers.py     pure: event -> Trigger(start, fire_at, minutes_before,
                         key). Handles popup-only, useDefault, all-day
                         wall-clock math, DST, declined and cancelled events.
-  nudge/store.py        SQLite `handled(key, status sent|skipped, at)`,
+  nudge/store.py        SQLite `reminders(id, content, start, snooze_until)`
+                        (the id is carried in Telegram button data) and
+                        `handled(key, status sent|skipped, at)`,
                         pruned after 60 days.
                         key = calendar_id:event_id:start:minutes|notifier
                         A moved event gets a new key and fires again. The
@@ -143,6 +145,8 @@ Package layout (run as `python -m nudge <command>`):
                         never include the token-bearing URL)
   nudge/config.py       config.toml loader and validation
   nudge/engine.py       service loop
+  nudge/snooze.py       Telegram button taps (long-poll getUpdates in place
+                        of the tick sleep), snooze re-sends
   nudge/__main__.py     CLI: auth | calendars | upcoming | test |
                         telegram-chats | run
   tests/                pytest: triggers, format, engine, config
@@ -159,6 +163,10 @@ Service loop:
                               later than that: mark skipped and log
                               send failed: leave that notifier unmarked and
                                 retry it alone next tick
+  Telegram:                 the 30 s wait is a getUpdates long-poll, so
+                            button taps are handled within about a second.
+                            Taps from other chats are ignored. Snoozes are in
+                            SQLite, so they survive restarts.
   Google auth failure:      one Discord alert telling you to re-run
                             `nudge auth`, then retry every poll.
   Time zone:                taken from the Google account setting, not from
@@ -185,6 +193,10 @@ systemctl restart nudge. Only the Pi runs `nudge run`.
   ⏰ **Dentist appointment** · tomorrow at 9:00 AM      (leads of 6 h or more)
   ⏰ **Mom's birthday** · tomorrow                      (all-day)
   ⏰ **Dentist appointment** · in 5 minutes _(late)_
+  🦷 **Dentist appointment** · started 5 minutes ago   (a snoozed reminder
+                                                        coming back)
+  Telegram adds the buttons [💤 10 min] [💤 1 hour] [✅ Done]. Tapping one
+  edits the message to "💤 Snoozed until 4:05 PM" or "✅ Done".
 
   - The wording is computed at send time from the event start.
   - Emoji (2026-09-22): keyword rules in format.EmojiRules. There are
@@ -222,7 +234,8 @@ M5  Hardening / extensions (as needed)
     - [x] Telegram notifier, with sent state tracked per notifier
       (2026-09-22)
     - [ ] Daily "today's agenda" digest message (nice-to-have)
-    - [ ] Telegram inline "Snooze" buttons (stretch)
+    - [x] Telegram snooze buttons: 💤 10 min · 💤 1 hour · ✅ Done
+      (2026-09-22). Snoozed reminders re-send to Telegram only.
     - [x] Emoji keyword rules (2026-09-22)
 
 7. RISKS

@@ -20,8 +20,9 @@ are in `miniPRD.txt`, which is the source of truth for requirements.
   at 3:50 PM that day.
 - Telegram was added 2026-09-22 (`@adam_nudge_bot`). Both destinations run
   in parallel for a trial week; afterwards, ask the user which one to keep.
-- Candidates for next: Telegram snooze buttons (agreed as next), a daily
-  agenda digest, and popups on the recurring Trash Night / Yard Trash events.
+- Emoji rules and Telegram snooze buttons shipped 2026-09-22.
+- Candidates for next: a daily agenda digest, and popups on the recurring
+  Trash Night / Yard Trash events (the user's job).
 
 ## Working agreements
 
@@ -62,6 +63,7 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-22 | Telegram snooze: the user chose 10 min / 1 hour / Done, with re-sends to Telegram only. The long-poll replaces the tick sleep. Gotchas: (1) only one getUpdates consumer at a time, so running `telegram-chats` on the Mac while the Pi service runs can 409 or miss messages (the service logs incoming chat IDs instead); (2) a `nudge test` sent from the Mac has buttons the Pi doesn't know (they answer "expired"), so run `nudge test` on the Pi. | done |
 | 2026-09-22 | Emoji keyword rules: about 20 built-ins, overridable in config, word-start matching (so "Recall" doesn't match "call"). Next up, as agreed with the user: **Telegram snooze buttons**. Trial week of Discord and Telegram runs until about 2026-09-29. | done |
 | 2026-09-22 | Telegram notifier added. Messages are now structured (`format.Message`) and rendered per destination (Discord markdown, Telegram HTML). The dedupe key gained a `|notifier` suffix. Existing rows no longer match, which was harmless at deploy time because no trigger was inside the grace window. | done |
 | 2026-09-21 | M4: deployed to the Pi as `nudge.service` (enabled, active). Verified `upcoming` and `test` from the Pi. First live check: TEST EVENT FOR CLAUDE popup at 3:50 PM ET on 2026-09-22. Only one machine should run `nudge run`, or you get double sends. | done |
