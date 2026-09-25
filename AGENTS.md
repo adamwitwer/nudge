@@ -8,41 +8,36 @@ and suggest improvements, not just execute. Record that input here.
 
 **nudge** is a small service for a Raspberry Pi. It reads Google Calendar events (from a
 configured list of calendars) and sends each event's **popup** reminders as
-Discord and Telegram messages at the times set in GCal. The spec and plan
+Telegram messages (Discord is supported but retired) at the times set in GCal. The spec and plan
 are in `miniPRD.txt`, which is the source of truth for requirements.
 
-## Where we left off (2026-09-22)
+## Where we left off (2026-09-25)
 
-**Live on the Pi** (`nudge.service`): popup reminders from Family and
-Personal go to Discord and Telegram (`@adam_nudge_bot`). Shipped so far:
-keyword emoji, Telegram snooze buttons (10 min / 1 hour / Done), and a daily
-8:30 AM missing-notification audit (Telegram only). The user has been adding
-popups to their real events (Garbage, Recycling, Bulk Trash, Yard Trash,
-filters, membrane). There are 19 upcoming triggers.
+**Live on the Pi** (`nudge.service`), Telegram only. Week one of real use:
+every reminder delivered (Recycling Tue 19:00:17, Garbage Thu 19:00:08), and
+the 8:30 AM audit ran clean on the 23rd, 24th and 25th.
 
-**Verified 2026-09-22:** `TEST EVENT FOR CLAUDE` was sent to Discord at
-15:50:14 and Telegram at 15:50:15, and both arrived. No restarts, no errors.
-M4 is fully ticked. Still to confirm: the first *scheduled* 8:30 AM audit
-(2026-09-23; today's ran at 12:32 as a catch-up).
+**Decided 2026-09-25:** Discord is retired. Its messages were redundant next
+to Telegram. The notifier stays in the code and `config.toml` keeps the
+webhook commented out (plus `config.toml.bak` on the Pi), so it is one
+uncomment away. `config.example.toml` has Discord commented out too.
 
-**Identity done (2026-09-22):** the "Ping" mark lives in `assets/avatar.svg`
-(deep-indigo disc, amber dot, ivory + periwinkle waves), rendered to
-`avatar-512.png` and `avatar-120.png` with `rsvg-convert`. The old bell
-(`assets/logo.*`) is gone. Set already: the Discord webhook's name and avatar,
-and the Telegram bot's name and descriptions. Both manual uploads are
-done too (Telegram bot photo, Google consent-screen logo), confirmed by the
-user 2026-09-22. Concept canvas:
-https://claude.ai/artifact/BEnwigXDHJs3DiPw2qE8dk
+**Fixed 2026-09-25:** the service crashed twice overnight (09-23 18:06,
+09-24 04:38; systemd restarted it 10 s later, nothing was missed). A bare
+`TimeoutError` from the Telegram long-poll escaped `telegram.call`, which
+only caught `TelegramError`. Now `call` converts `TimeoutError`/`OSError`,
+and the tick body has a last-resort `except Exception` that logs and
+continues. Regression tests in `tests/test_snooze.py`.
 
-**Now in normal use.** The user is living with nudge for a few days and will
-bring improvement ideas. Nothing is queued; wait for their report rather than
-building ahead. Worth asking about when they return: which destination they
-actually read (Discord vs Telegram), whether the 8:30 audit lands well, and
-whether any reminder was late or missed.
+**Note:** `~/.config/nudge/` no longer exists on the dev Mac (the user
+cleaned it up), so Mac-side `nudge` commands won't run and there is no
+off-Pi copy of `credentials.json` / `token.json`. Both are recoverable
+(re-download the client from Google Cloud, re-run `nudge auth`). Run CLI
+commands on the Pi.
 
-**Also open:** the trial week of Discord vs Telegram ends about 2026-09-29, so
-ask which to keep. Check all-day `useDefault` behavior (input log). The
-daily agenda digest is still an idea.
+**Open:** all-day `useDefault` behavior (input log). The daily agenda digest
+is still an idea. Transient network warnings (SSL EOF, getUpdates
+"Network is unreachable") appear a few times a day and are handled.
 
 ## Working agreements
 
@@ -83,6 +78,8 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-25 | Week-one review of the journal caught two silent crashes that the user hadn't noticed (uncaught socket timeout in the long-poll). Worth re-reading `journalctl -u nudge` for `NRestarts` and WARNING lines whenever the user reports back. | done |
+| 2026-09-25 | Discord retired after the trial; Telegram only. Kept the notifier and a commented config block rather than deleting, so it can come back. | adopted |
 | 2026-09-22 | Identity: the user picked the "Ping" concept (amber dot + two waves) from four; the disc went deep indigo #231F5E so the circle keeps its edge on dark chat backgrounds. Gotcha: **ImageMagick cannot render stroked paths or SVG arcs** (it drew only the fills), so `rsvg-convert` (brew librsvg) renders the PNGs. Discord webhook PATCH needs a `User-Agent` header or Cloudflare returns 403 code 1010. | done |
 | 2026-09-22 | The user's idea: a daily audit for events with no popup. Built at 8:30 AM, Telegram only, 14 days, `#nonudge` opt-out, recurring listed once, email-only flagged. Against real data, the 14-day window is clean; over 365 days, 3 yearly birthday/anniversary events have no popup. | done |
 | 2026-09-22 | Before recommending per-calendar default notifications: check what the API returns for an **all-day** event using defaults. `calendarList.defaultReminders` covers timed events only, so nudge may wrongly apply e.g. "10 min before" to all-day events (firing at 11:50 PM the night before). | open |
