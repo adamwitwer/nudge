@@ -33,12 +33,15 @@ chat_id = 123456789
 # soccer = "⚽"
 # trash = "🚮"
 
-[audit]
-# Daily check for upcoming events with NO popup notification (so nudge would
-# never fire for them). Sent only when something is missing.
-# Put the tag in an event's description to skip it.
+
+[morning]
+# One message each morning: today's agenda, plus any upcoming events with NO
+# popup notification (nudge would never fire for those). It sends even on an
+# empty day, so a missing brief means the service is down.
+# Put the tag in an event's description to keep it out of both parts.
 # enabled = true
 # time = "08:30"        # local, 24-hour
-# days = 14             # look-ahead
+# agenda = true         # list today's events
+# days = 14             # audit look-ahead
 # via = ["telegram"]    # notifier names
 # tag = "#nonudge"

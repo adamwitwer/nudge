@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from google.auth.exceptions import RefreshError
 
-from . import audit, format, gcal, snooze
+from . import format, gcal, morning, snooze
 from .config import Config
 from .notifiers import Notifier
 from .store import Store
@@ -101,11 +101,11 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
             except Exception as e:  # network blips etc.: keep the last good trigger list
                 log.warning("poll failed: %s", e)
                 last_poll = now
-            if svc is not None and tz is not None and audit.is_due(cfg.audit, store, now, tz):
+            if svc is not None and tz is not None and morning.is_due(cfg.morning, store, now, tz):
                 try:
-                    audit.run(cfg.audit, svc, cfg.calendars, notifiers, store, now, tz)
+                    morning.run(cfg.morning, svc, cfg.calendars, notifiers, store, now, tz, cfg.emoji)
                 except Exception as e:  # not marked done; retried next poll
-                    log.warning("audit failed: %s", e)
+                    log.warning("morning brief failed: %s", e)
         try:
             if tz is not None:
                 process_due(triggers, store, notifiers, now, tz, cfg.grace, cfg.emoji)

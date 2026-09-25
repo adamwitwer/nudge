@@ -109,7 +109,9 @@ class Message:
     late: bool = False
     emoji: str = EMOJI
     ref: int | None = None  # store.reminders id; lets Telegram attach snooze buttons
-    lines: tuple[str, ...] = ()  # optional bullet list below the headline
+    # Optional bullet list below the headline, in sections of
+    # (heading or None, lines): the morning brief is agenda + audit.
+    sections: tuple[tuple[str | None, tuple[str, ...]], ...] = ()
 
 
 _MD_SPECIAL = re.compile(r"([\\*_~`|>])")
@@ -119,6 +121,15 @@ def escape_markdown(text: str) -> str:
     return _MD_SPECIAL.sub(r"\\\1", text)
 
 
+def _body(m: Message, escape, bold) -> str:
+    out = ""
+    for heading, lines in m.sections:
+        if heading:
+            out += f"\n\n{bold(escape(heading))}"
+        out += "".join(f"\n• {escape(line)}" for line in lines)
+    return out
+
+
 def as_markdown(m: Message) -> str:
     """Discord."""
     text = f"{m.emoji} **{escape_markdown(m.title)}**"
@@ -126,7 +137,7 @@ def as_markdown(m: Message) -> str:
         text += f" · {escape_markdown(m.detail)}"
     if m.late:
         text += " _(late)_"
-    return text + "".join(f"\n• {escape_markdown(line)}" for line in m.lines)
+    return text + _body(m, escape_markdown, lambda h: f"**{h}**")
 
 
 def as_html(m: Message) -> str:
@@ -136,7 +147,7 @@ def as_html(m: Message) -> str:
         text += f" · {html.escape(m.detail, quote=False)}"
     if m.late:
         text += " <i>(late)</i>"
-    return text + "".join(f"\n• {html.escape(line, quote=False)}" for line in m.lines)
+    return text + _body(m, lambda t: html.escape(t, quote=False), lambda h: f"<b>{h}</b>")
 
 
 def message(

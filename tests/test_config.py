@@ -48,12 +48,20 @@ def test_emoji_builtins_can_be_disabled(tmp_path):
     assert cfg.emoji.pick("Birthday") == "⏰"
 
 
-def test_audit_defaults_and_overrides(tmp_path):
+def test_morning_defaults_and_overrides(tmp_path):
     from datetime import time
 
     cfg = load(write(tmp_path, 'calendars = ["a"]\n'))
-    assert (cfg.audit.at, cfg.audit.days, cfg.audit.via, cfg.audit.tag) == (time(8, 30), 14, ("telegram",), "#nonudge")
-    cfg = load(write(tmp_path, 'calendars = ["a"]\n[audit]\ntime = "07:15"\ndays = 7\nvia = ["discord", "telegram"]\n'))
-    assert (cfg.audit.at, cfg.audit.days, cfg.audit.via) == (time(7, 15), 7, ("discord", "telegram"))
+    assert (cfg.morning.at, cfg.morning.days, cfg.morning.via, cfg.morning.tag) == (time(8, 30), 14, ("telegram",), "#nonudge")
+    assert cfg.morning.enabled and cfg.morning.agenda
+    cfg = load(write(tmp_path, 'calendars = ["a"]\n[morning]\ntime = "07:15"\ndays = 7\nagenda = false\nvia = ["discord", "telegram"]\n'))
+    assert (cfg.morning.at, cfg.morning.days, cfg.morning.via, cfg.morning.agenda) == (time(7, 15), 7, ("discord", "telegram"), False)
     with pytest.raises(ConfigError):
-        load(write(tmp_path, 'calendars = ["a"]\n[audit]\ntime = "8:30am"\n'))
+        load(write(tmp_path, 'calendars = ["a"]\n[morning]\ntime = "8:30am"\n'))
+
+
+def test_legacy_audit_section_still_read(tmp_path):
+    from datetime import time
+
+    cfg = load(write(tmp_path, 'calendars = ["a"]\n[audit]\ntime = "07:15"\n'))
+    assert cfg.morning.at == time(7, 15)

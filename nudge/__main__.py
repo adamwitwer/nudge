@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from . import audit, config, engine, format, gcal, notifiers
+from . import agenda, audit, config, engine, format, gcal, morning, notifiers
 from .store import Store
 from .triggers import Trigger, triggers_for_event
 
@@ -82,21 +82,47 @@ def cmd_test(args) -> None:
         print(f"sent via {n.name}: {msg.title} · {msg.detail}")
 
 
+def _print(msg) -> None:
+    print(f"{msg.emoji} {msg.title}" + (f" · {msg.detail}" if msg.detail else ""))
+    for heading, lines in msg.sections:
+        if heading:
+            print(f"  {heading}")
+        for line in lines:
+            print(f"    • {line}")
+
+
+def _send(cfg, msg) -> None:
+    for n in [n for n in _notifiers(cfg) if n.name in cfg.morning.via]:
+        n.send(msg)
+        print(f"sent via {n.name}")
+
+
 def cmd_audit(args) -> None:
     cfg = config.load()
     svc = gcal.service()
     tz = ZoneInfo(gcal.user_timezone(svc))
     now = datetime.now(timezone.utc)
-    events, defaults = audit.collect(svc, cfg.calendars, tz, now, args.days or cfg.audit.days)
-    findings = audit.find_missing(events, defaults, tz, cfg.audit.tag)
+    events, defaults = audit.collect(svc, cfg.calendars, tz, now, args.days or cfg.morning.days)
+    findings = audit.find_missing(events, defaults, tz, cfg.morning.tag)
     msg = audit.build_message(findings, tz)
-    print(f"{msg.emoji} {msg.title}")
-    for line in msg.lines:
-        print(f"  • {line}")
+    _print(msg)
     if args.send and findings:
-        for n in [n for n in _notifiers(cfg) if n.name in cfg.audit.via]:
-            n.send(msg)
-            print(f"sent via {n.name}")
+        _send(cfg, msg)
+
+
+def cmd_morning(args) -> None:
+    """The brief the service sends each morning, on demand."""
+    cfg = config.load()
+    svc = gcal.service()
+    tz = ZoneInfo(gcal.user_timezone(svc))
+    now = datetime.now(timezone.utc)
+    items = agenda.today(svc, cfg.calendars, tz, now, cfg.morning.tag)
+    events, defaults = audit.collect(svc, cfg.calendars, tz, now, cfg.morning.days)
+    findings = audit.find_missing(events, defaults, tz, cfg.morning.tag)
+    msg = morning.build_message(items, findings, now, tz, cfg.emoji)
+    _print(msg)
+    if args.send:
+        _send(cfg, msg)
 
 
 def cmd_telegram_chats(args) -> None:
@@ -142,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--days", type=int, help="look-ahead (default: audit.days, 14)")
     p.add_argument("--send", action="store_true", help="also send the list (via audit.via)")
     p.set_defaults(func=cmd_audit)
+
+    p = sub.add_parser("morning", help="today's agenda + audit, as the service sends it at 8:30")
+    p.add_argument("--send", action="store_true", help="also send it (via morning.via)")
+    p.set_defaults(func=cmd_morning)
 
     p = sub.add_parser("telegram-chats", help="show chat IDs that have messaged your bot")
     p.set_defaults(func=cmd_telegram_chats)

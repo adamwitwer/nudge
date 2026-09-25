@@ -1,9 +1,10 @@
-"""Daily check: upcoming events with no popup notification.
+"""Upcoming events with no popup notification.
+
+Part of the morning brief (see morning.py); `nudge audit` also runs it alone.
 
 nudge can only send reminders for events that have a popup notification, and
-the GCal UI makes it easy to forget one. Once a day (default 8:30 AM), this
-lists the next N days' events that would never fire, and sends the list only
-if it isn't empty.
+the GCal UI makes it easy to forget one. This lists the next N days' events that
+would never fire.
 
 - Recurring events are listed once (their next occurrence), marked "repeats".
 - Events with only email notifications are marked "email only".
@@ -19,15 +20,9 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from . import format, gcal
-from .config import AuditConfig
-from .notifiers import Notifier
-from .store import Store
 from .triggers import event_start, is_declined, popup_minutes
 
 log = logging.getLogger("nudge")
-
-LAST_RUN_KEY = "audit_last_run"  # local date of the last completed audit
-
 
 @dataclass(frozen=True)
 class Finding:
@@ -79,7 +74,7 @@ def build_message(findings: list[Finding], tz: ZoneInfo) -> format.Message:
     return format.Message(
         f"{n} event{'s' if n != 1 else ''} with no popup notification",
         emoji="🔍",
-        lines=tuple(f.line(tz) for f in findings),
+        sections=((None, tuple(f.line(tz) for f in findings)),),
     )
 
 
@@ -89,25 +84,3 @@ def collect(svc, calendar_ids: list[str], tz: ZoneInfo, now: datetime, days: int
         defaults[cal_id] = gcal.get_calendar(svc, cal_id).get("defaultReminders", [])
         events += [(cal_id, ev) for ev in gcal.list_events(svc, cal_id, now, now + timedelta(days=days))]
     return events, defaults
-
-
-def is_due(cfg: AuditConfig, store: Store, now: datetime, tz: ZoneInfo) -> bool:
-    local = now.astimezone(tz)
-    return cfg.enabled and local.time() >= cfg.at and store.get_meta(LAST_RUN_KEY) != local.date().isoformat()
-
-
-def run(cfg: AuditConfig, svc, calendar_ids: list[str], notifiers: list[Notifier], store: Store, now: datetime, tz: ZoneInfo) -> None:
-    """Run the audit and mark today done. Raises on failure (retried next poll)."""
-    targets = [n for n in notifiers if n.name in cfg.via]
-    events, defaults = collect(svc, calendar_ids, tz, now, cfg.days)
-    findings = find_missing(events, defaults, tz, cfg.tag)
-    if findings and targets:
-        msg = build_message(findings, tz)
-        for n in targets:
-            n.send(msg)
-        log.info("audit: sent %d finding(s) via %s", len(findings), ", ".join(n.name for n in targets))
-    elif findings:
-        log.warning("audit: %d finding(s) but no notifier matches audit.via=%s", len(findings), list(cfg.via))
-    else:
-        log.info("audit: every upcoming event has a popup notification")
-    store.set_meta(LAST_RUN_KEY, now.astimezone(tz).date().isoformat())

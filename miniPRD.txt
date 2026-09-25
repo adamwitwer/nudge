@@ -12,7 +12,8 @@ The messages would need to be nicely formatted and might include emoji and other
 PROJECT PLAN  (drafted 2026-09-21)
 ================================================================================
 
-STATUS (2026-09-25): Live on the Pi (nudge.service), sending to Telegram
+STATUS (2026-09-25): Live on the Pi (nudge.service). Telegram-only, with a
+daily 8:30 AM brief (agenda + audit). Earlier status: sending to Telegram
 (Discord retired after the trial, still supported in code), with keyword
 emoji, snooze buttons, and a daily 8:30 AM "missing notification" audit.
 First week of real use: every reminder delivered; two crashes from an
@@ -150,11 +151,13 @@ Package layout (run as `python -m nudge <command>`):
                         never include the token-bearing URL)
   nudge/config.py       config.toml loader and validation
   nudge/engine.py       service loop
-  nudge/audit.py        daily check for events with no popup notification
+  nudge/agenda.py       today's events, for the morning brief
+  nudge/audit.py        events with no popup notification
+  nudge/morning.py      the 8:30 AM brief: agenda + audit in one message
   nudge/snooze.py       Telegram button taps (long-poll getUpdates in place
                         of the tick sleep), snooze re-sends
-  nudge/__main__.py     CLI: auth | calendars | upcoming | test | audit |
-                        telegram-chats | run
+  nudge/__main__.py     CLI: auth | calendars | upcoming | test | morning |
+                        audit | telegram-chats | run
   tests/                pytest: triggers, format, engine, config
   systemd/nudge.service
 
@@ -173,12 +176,13 @@ Service loop:
                             button taps are handled within about a second.
                             Taps from other chats are ignored. Snoozes are in
                             SQLite, so they survive restarts.
-  Daily audit:              after audit.time (08:30) once per local day
-                            (recorded in the store's meta table), list the
-                            next 14 days' events with no popup, and send via
-                            Telegram only if there are any. Recurring events
-                            are listed once, email-only ones flagged,
-                            #nonudge in the description skips an event.
+  Morning brief:            after morning.time (08:30) once per local day
+                            (recorded in the store's meta table): today's
+                            agenda, then the next 14 days' events with no
+                            popup. Sent even when both are empty, so a
+                            missing brief means the service is down.
+                            Recurring events are listed once, email-only
+                            ones flagged, #nonudge skips an event.
   Google auth failure:      one Discord alert telling you to re-run
                             `nudge auth`, then retry every poll.
   Time zone:                taken from the Google account setting, not from
@@ -249,7 +253,8 @@ M5  Hardening / extensions (as needed)
       (2026-09-22)
     - [x] Daily "missing notification" audit, 8:30 AM via Telegram
       (2026-09-22; the user's idea)
-    - [ ] Daily "today's agenda" digest message (nice-to-have)
+    - [x] Daily agenda, merged into the 8:30 AM brief (2026-09-25). Sends on
+      empty days too, so it doubles as a heartbeat.
     - [x] App identity (2026-09-22): "Ping" mark, an amber dot with two
       waves on a deep-indigo disc. Source `assets/avatar.svg`, rendered to
       avatar-512.png / avatar-120.png. Palette: indigo #231F5E disc,

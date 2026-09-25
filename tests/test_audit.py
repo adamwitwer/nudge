@@ -2,9 +2,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from nudge import audit
-from nudge.config import AuditConfig
 from nudge.format import as_html
-from nudge.store import Store
 
 NY = ZoneInfo("America/New_York")
 CAL = "family"
@@ -63,41 +61,3 @@ def test_message_lists_findings():
     html = as_html(audit.build_message(f, NY))
     assert html == ("🔍 <b>2 events with no popup notification</b>"
                     "\n• Wed Sep 23 9:00 AM · Dentist\n• Thu Sep 24 3:00 PM · Tom &amp; Jerry")
-
-
-class FakeNotifier:
-    def __init__(self, name):
-        self.name, self.sent = name, []
-
-    def send(self, message):
-        self.sent.append(message)
-
-
-def run_at(local_hm, store, monkeypatch, events, cfg=AuditConfig()):
-    monkeypatch.setattr(audit, "collect", lambda *a: ([(CAL, e) for e in events], {CAL: []}))
-    now = datetime(2026, 9, 22, *local_hm, tzinfo=NY).astimezone(timezone.utc)
-    tg, dc = FakeNotifier("telegram"), FakeNotifier("discord")
-    if audit.is_due(cfg, store, now, NY):
-        audit.run(cfg, None, [CAL], [dc, tg], store, now, NY)
-    return tg, dc
-
-
-def test_runs_once_a_day_after_830_telegram_only(monkeypatch):
-    store, events = Store(":memory:"), [ev("b", "Dentist")]
-    tg, _ = run_at((8, 29), store, monkeypatch, events)
-    assert tg.sent == []  # too early
-    tg, dc = run_at((8, 30), store, monkeypatch, events)
-    assert len(tg.sent) == 1 and dc.sent == []
-    tg, _ = run_at((12, 0), store, monkeypatch, events)
-    assert tg.sent == []  # already done today
-
-
-def test_nothing_missing_sends_nothing_but_counts_as_done(monkeypatch):
-    store = Store(":memory:")
-    tg, _ = run_at((9, 0), store, monkeypatch, [ev("a", "ok", reminders=POPUP)])
-    assert tg.sent == [] and store.get_meta(audit.LAST_RUN_KEY) == "2026-09-22"
-
-
-def test_disabled(monkeypatch):
-    tg, _ = run_at((9, 0), Store(":memory:"), monkeypatch, [ev("b", "x")], AuditConfig(enabled=False))
-    assert tg.sent == []

@@ -18,12 +18,13 @@ class ConfigError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class AuditConfig:
-    """Daily check for upcoming events that have no popup notification."""
+class MorningConfig:
+    """The once-a-day brief: today's agenda plus the missing-popup audit."""
 
     enabled: bool = True
     at: time = time(8, 30)
-    days: int = 14
+    agenda: bool = True  # list today's events (and say so on an empty day)
+    days: int = 14  # audit look-ahead
     via: tuple[str, ...] = ("telegram",)  # notifier names
     tag: str = "#nonudge"  # put this in an event's description to skip it
 
@@ -37,7 +38,7 @@ class Config:
     telegram_bot_token: str | None = None
     telegram_chat_id: int | str | None = None
     emoji: EmojiRules = field(default_factory=EmojiRules)
-    audit: AuditConfig = field(default_factory=lambda: AuditConfig())
+    morning: MorningConfig = field(default_factory=lambda: MorningConfig())
 
 
 def load(path: Path = CONFIG_FILE) -> Config:
@@ -72,17 +73,18 @@ def load(path: Path = CONFIG_FILE) -> Config:
         default=emoji_cfg.get("default", EMOJI),
     )
 
-    a = raw.get("audit", {})
+    m = raw.get("morning", raw.get("audit", {}))  # [audit] was the old name
     try:
-        at = datetime.strptime(a.get("time", "08:30"), "%H:%M").time()
+        at = datetime.strptime(m.get("time", "08:30"), "%H:%M").time()
     except ValueError:
-        raise ConfigError(f"{path}: audit.time must be HH:MM (24-hour)") from None
-    audit = AuditConfig(
-        enabled=a.get("enabled", True),
+        raise ConfigError(f"{path}: morning.time must be HH:MM (24-hour)") from None
+    morning = MorningConfig(
+        enabled=m.get("enabled", True),
         at=at,
-        days=int(a.get("days", 14)),
-        via=tuple(a.get("via", ["telegram"])),
-        tag=a.get("tag", "#nonudge"),
+        agenda=m.get("agenda", True),
+        days=int(m.get("days", 14)),
+        via=tuple(m.get("via", ["telegram"])),
+        tag=m.get("tag", "#nonudge"),
     )
 
     return Config(
@@ -93,5 +95,5 @@ def load(path: Path = CONFIG_FILE) -> Config:
         telegram_bot_token=token,
         telegram_chat_id=chat_id,
         emoji=emoji,
-        audit=audit,
+        morning=morning,
     )
