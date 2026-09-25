@@ -10,9 +10,11 @@ calendars = [
 poll_minutes = 5      # how often to re-read Google Calendar
 grace_minutes = 15    # still send a missed reminder if it's at most this late
 
-[discord]
+# Discord is optional and off by default (Telegram covers it). To use it,
+# uncomment and paste a webhook URL:
 # Channel settings > Integrations > Webhooks > New Webhook > Copy URL
-webhook_url = "https://discord.com/api/webhooks/..."
+# [discord]
+# webhook_url = "https://discord.com/api/webhooks/..."
 
 [telegram]
 # Optional. Create a bot with @BotFather, paste its token, send the bot any

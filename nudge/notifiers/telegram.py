@@ -33,6 +33,10 @@ def call(token: str, method: str, params: dict | None = None, timeout: float = 1
         raise err from None
     except urllib.error.URLError as e:
         raise TelegramError(f"Telegram {method} failed: {e.reason}") from None
+    except (TimeoutError, OSError) as e:
+        # A long-poll read that times out raises a bare TimeoutError, which
+        # once crashed the service twice overnight. Never let it escape.
+        raise TelegramError(f"Telegram {method} failed: {e}") from None
 
 
 # Button label -> callback_data prefix. callback_data is "<action>:<ref>".

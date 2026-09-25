@@ -124,3 +124,23 @@ def test_discord_only_reminders_get_no_ref(api):
     t = Trigger("cal", "e1", "x", NOW + timedelta(minutes=10), False, 10, NOW)
     process_due([t], store, [d], NOW, NY, timedelta(minutes=15))
     assert d.got[0].ref is None
+
+
+def test_socket_timeout_becomes_a_telegram_error(monkeypatch):
+    """A long-poll read timeout raised a bare TimeoutError and killed the
+    service twice overnight (2026-09-23, 2026-09-24)."""
+    def boom(req, timeout=None):
+        raise TimeoutError("The read operation timed out")
+
+    monkeypatch.setattr(telegram.urllib.request, "urlopen", boom)
+    with pytest.raises(telegram.TelegramError) as e:
+        telegram.call("1:x", "getUpdates", {})
+    assert "getUpdates" in str(e.value) and "1:x" not in str(e.value)
+
+
+def test_listen_survives_a_failing_getupdates(monkeypatch):
+    slept = []
+    monkeypatch.setattr(snooze.time, "sleep", slept.append)
+    monkeypatch.setattr(snooze, "call", lambda *a, **k: (_ for _ in ()).throw(telegram.TelegramError("down")))
+    snooze.listen(TelegramBot("1:x", CHAT), Store(":memory:"), NY, 30)  # must not raise
+    assert slept == [30]

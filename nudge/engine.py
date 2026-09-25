@@ -106,13 +106,17 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
                     audit.run(cfg.audit, svc, cfg.calendars, notifiers, store, now, tz)
                 except Exception as e:  # not marked done; retried next poll
                     log.warning("audit failed: %s", e)
-        if tz is not None:
-            process_due(triggers, store, notifiers, now, tz, cfg.grace, cfg.emoji)
-            if bots:
-                snooze.fire_due(bots, store, now, tz)
-        if bots and tz is not None:
-            snooze.listen(bots[0], store, tz, TICK_SECONDS)  # returns early on a tap
-        else:
+        try:
+            if tz is not None:
+                process_due(triggers, store, notifiers, now, tz, cfg.grace, cfg.emoji)
+                if bots:
+                    snooze.fire_due(bots, store, now, tz)
+            if bots and tz is not None:
+                snooze.listen(bots[0], store, tz, TICK_SECONDS)  # returns early on a tap
+            else:
+                time.sleep(TICK_SECONDS)
+        except Exception:  # last resort: a service must not die on one bad tick
+            log.exception("unexpected error; continuing")
             time.sleep(TICK_SECONDS)
 
 
