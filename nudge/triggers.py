@@ -9,6 +9,11 @@ and get tested:
 - All-day events: `minutes` counts back from midnight at the start of the
   event date, in the calendar's time zone (wall-clock), e.g. 420 = 5 PM the
   day before.
+  Verified 2026-09-25: GCal writes its separate *all-day* default onto the
+  event as a concrete override at creation time (900 = 1 day before at
+  9 AM), so `useDefault` all-day events never pick up the calendar's
+  timed-event default. A later change to the all-day default does not reach
+  events that already exist.
 - Events the user has declined never fire.
 """
 

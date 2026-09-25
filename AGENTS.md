@@ -35,8 +35,10 @@ off-Pi copy of `credentials.json` / `token.json`. Both are recoverable
 (re-download the client from Google Cloud, re-run `nudge auth`). Run CLI
 commands on the Pi.
 
-**Open:** all-day `useDefault` behavior (input log). The daily agenda digest
-is still an idea. Transient network warnings (SSL EOF, getUpdates
+**Open:** the daily agenda digest is still an idea. (All-day `useDefault`
+was tested 2026-09-25 and needs no change; see the input log.) The user set
+default notifications on Personal on 2026-09-25: timed 10 min, all-day 1 day
+before at 9 AM. Transient network warnings (SSL EOF, getUpdates
 "Network is unreachable") appear a few times a day and are handled.
 
 ## Working agreements
@@ -82,7 +84,7 @@ first. Status is one of: open / adopted / declined / done.
 | 2026-09-25 | Discord retired after the trial; Telegram only. Kept the notifier and a commented config block rather than deleting, so it can come back. | adopted |
 | 2026-09-22 | Identity: the user picked the "Ping" concept (amber dot + two waves) from four; the disc went deep indigo #231F5E so the circle keeps its edge on dark chat backgrounds. Gotcha: **ImageMagick cannot render stroked paths or SVG arcs** (it drew only the fills), so `rsvg-convert` (brew librsvg) renders the PNGs. Discord webhook PATCH needs a `User-Agent` header or Cloudflare returns 403 code 1010. | done |
 | 2026-09-22 | The user's idea: a daily audit for events with no popup. Built at 8:30 AM, Telegram only, 14 days, `#nonudge` opt-out, recurring listed once, email-only flagged. Against real data, the 14-day window is clean; over 365 days, 3 yearly birthday/anniversary events have no popup. | done |
-| 2026-09-22 | Before recommending per-calendar default notifications: check what the API returns for an **all-day** event using defaults. `calendarList.defaultReminders` covers timed events only, so nudge may wrongly apply e.g. "10 min before" to all-day events (firing at 11:50 PM the night before). | open |
+| 2026-09-22 | Before recommending per-calendar default notifications: check what the API returns for an **all-day** event using defaults. Concern was unfounded — **tested 2026-09-25**: GCal materializes the all-day default onto the event as a concrete override (900 min = 1 day before at 9 AM); only timed events come back as `useDefault`. No code change. Caveat recorded: changing the all-day default later does not reach existing all-day events. | done |
 | 2026-09-22 | Telegram snooze: the user chose 10 min / 1 hour / Done, with re-sends to Telegram only. The long-poll replaces the tick sleep. Gotchas: (1) only one getUpdates consumer at a time, so running `telegram-chats` on the Mac while the Pi service runs can 409 or miss messages (the service logs incoming chat IDs instead); (2) a `nudge test` sent from the Mac has buttons the Pi doesn't know (they answer "expired"), so run `nudge test` on the Pi. | done |
 | 2026-09-22 | Emoji keyword rules: about 20 built-ins, overridable in config, word-start matching (so "Recall" doesn't match "call"). Next up, as agreed with the user: **Telegram snooze buttons**. Trial week of Discord and Telegram runs until about 2026-09-29. | done |
 | 2026-09-22 | Telegram notifier added. Messages are now structured (`format.Message`) and rendered per destination (Discord markdown, Telegram HTML). The dedupe key gained a `|notifier` suffix. Existing rows no longer match, which was harmless at deploy time because no trigger was inside the grace window. | done |

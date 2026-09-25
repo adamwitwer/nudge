@@ -257,9 +257,11 @@ M5  Hardening / extensions (as needed)
       Discord webhook name + avatar set via the API; Telegram bot name and
       descriptions set via the Bot API; the Telegram photo and the Google
       consent-screen logo are manual uploads.
-    - [ ] Verify how all-day events with useDefault behave. The API's
-      defaultReminders are timed-event defaults; GCal's separate all-day
-      defaults may not be exposed.
+    - [x] Verified 2026-09-25 with test events: GCal bakes the all-day
+      default into each all-day event as a concrete override, so the
+      calendar's timed defaultReminders are never misapplied. No code change
+      needed. Caveat: changing the all-day default later does not affect
+      existing all-day events.
     - [x] Telegram snooze buttons: 💤 10 min · 💤 1 hour · ✅ Done
       (2026-09-22). Snoozed reminders re-send to Telegram only.
     - [x] Emoji keyword rules (2026-09-22)
