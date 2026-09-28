@@ -140,6 +140,8 @@ def cmd_telegram_chats(args) -> None:
 
 def cmd_run(args) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    for noisy in ("httpx", "httpx2", "anthropic", "googleapiclient.discovery_cache"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     cfg = config.load()
     engine.run(cfg, _notifiers(cfg), Store())
 
