@@ -13,6 +13,7 @@ from google.auth.exceptions import RefreshError
 from . import format, gcal, morning, snooze
 from .config import Config
 from .notifiers import Notifier
+from .runtime import Runtime
 from .store import Store
 from .triggers import Trigger, triggers_for_event
 
@@ -74,6 +75,7 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
     last_poll: datetime | None = None
     auth_alerted = False
     svc = tz = None
+    rt: Runtime | None = None
     bots = [n for n in notifiers if getattr(n, "supports_actions", False)]
 
     while True:
@@ -82,6 +84,8 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
             try:
                 svc = svc or gcal.service()
                 tz = tz or ZoneInfo(gcal.user_timezone(svc))
+                rt = Runtime(cfg=cfg, store=store, tz=tz, svc=svc) if rt is None else rt
+                rt.svc = svc  # keep the router's handle fresh after an auth retry
                 triggers = collect_triggers(svc, cfg.calendars, tz, now, cfg.grace)
                 last_poll = now
                 auth_alerted = False
@@ -111,8 +115,8 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
                 process_due(triggers, store, notifiers, now, tz, cfg.grace, cfg.emoji)
                 if bots:
                     snooze.fire_due(bots, store, now, tz)
-            if bots and tz is not None:
-                snooze.listen(bots[0], store, tz, TICK_SECONDS)  # returns early on a tap
+            if bots and rt is not None:
+                snooze.listen(bots[0], rt, TICK_SECONDS)  # returns early on a tap or message
             else:
                 time.sleep(TICK_SECONDS)
         except Exception:  # last resort: a service must not die on one bad tick

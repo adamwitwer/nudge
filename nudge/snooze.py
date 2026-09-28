@@ -18,8 +18,9 @@ import time
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from . import format
+from . import commands, create, format
 from .notifiers.telegram import TelegramBot, TelegramError, call
+from .runtime import Runtime
 from .store import Store
 
 log = logging.getLogger("nudge")
@@ -27,11 +28,12 @@ log = logging.getLogger("nudge")
 SNOOZES = {"snooze10": timedelta(minutes=10), "snooze60": timedelta(hours=1)}
 
 
-def listen(bot: TelegramBot, store: Store, tz: ZoneInfo, seconds: float) -> None:
-    """Long-poll Telegram for up to `seconds`, handling button taps.
+def listen(bot: TelegramBot, rt: Runtime, seconds: float) -> None:
+    """Long-poll Telegram for up to `seconds`, handling taps and messages.
 
-    Used in place of the engine's sleep, so taps get answered right away.
+    Used in place of the engine's sleep, so replies come back right away.
     """
+    store, tz = rt.store, rt.tz
     try:
         updates = call(
             bot.token,
@@ -47,15 +49,18 @@ def listen(bot: TelegramBot, store: Store, tz: ZoneInfo, seconds: float) -> None
         bot.update_offset = update["update_id"] + 1
         if "callback_query" in update:
             try:
-                handle_callback(bot, store, update["callback_query"], datetime.now(timezone.utc), tz)
+                handle_callback(bot, rt, update["callback_query"], datetime.now(timezone.utc))
             except Exception as e:
                 log.warning("button tap failed: %s", e)
         elif "message" in update:
-            chat = update["message"].get("chat", {})
-            log.info("telegram message from chat_id=%s (%s)", chat.get("id"), chat.get("first_name") or chat.get("title"))
+            try:
+                commands.dispatch(bot, rt, update["message"])
+            except Exception as e:
+                log.warning("message handling failed: %s", e)
 
 
-def handle_callback(bot: TelegramBot, store: Store, cq: dict, now: datetime, tz: ZoneInfo) -> None:
+def handle_callback(bot: TelegramBot, rt: Runtime, cq: dict, now: datetime) -> None:
+    store, tz = rt.store, rt.tz
     msg = cq.get("message") or {}
     if str(msg.get("chat", {}).get("id")) != str(bot.chat_id):
         call(bot.token, "answerCallbackQuery", {"callback_query_id": cq["id"]})
@@ -63,6 +68,9 @@ def handle_callback(bot: TelegramBot, store: Store, cq: dict, now: datetime, tz:
         return
 
     action, _, ref = cq.get("data", "").partition(":")
+    if action in create.ACTIONS:
+        _handle_create(bot, rt, action, ref, cq, now)
+        return
     reminder = store.get_reminder(int(ref)) if ref.isdigit() else None
     if reminder is None or (action not in SNOOZES and action != "done"):
         toast, note = "This reminder has expired", None
@@ -84,6 +92,27 @@ def handle_callback(bot: TelegramBot, store: Store, cq: dict, now: datetime, tz:
         call(bot.token, "editMessageText", {**params, "text": text, "parse_mode": "HTML"})
     else:
         call(bot.token, "editMessageReplyMarkup", params)
+
+
+def _handle_create(bot: TelegramBot, rt: Runtime, action: str, ref: str, cq: dict, now: datetime) -> None:
+    """Preview buttons: Create / swap calendar / Cancel / Undo."""
+    message_id = (cq.get("message") or {}).get("message_id")
+    if not ref.isdigit():
+        toast, message, keyboard = "I don't know that button", None, None
+    else:
+        try:
+            toast, message, keyboard = create.handle(bot, rt, action, int(ref), message_id, now)
+        except Exception as e:
+            log.warning("%s failed: %s", action, e)
+            toast, message, keyboard = f"Couldn't {action} that ({type(e).__name__})", None, None
+
+    call(bot.token, "answerCallbackQuery", {"callback_query_id": cq["id"], "text": toast})
+    if message is not None:
+        params = {"chat_id": bot.chat_id, "message_id": message_id,
+                  "text": format.as_html(message), "parse_mode": "HTML"}
+        if keyboard is not None:
+            params["reply_markup"] = keyboard
+        call(bot.token, "editMessageText", params)
 
 
 def fire_due(bots: list[TelegramBot], store: Store, now: datetime, tz: ZoneInfo) -> None:

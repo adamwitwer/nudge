@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -50,6 +51,13 @@ class Store:
             " created TEXT NOT NULL)"
         )
         self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS proposals ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " payload TEXT NOT NULL,"  # JSON: the proposed event, awaiting confirmation
+            " calendar_id TEXT, event_id TEXT,"  # filled in once created, for Undo
+            " created TEXT NOT NULL)"
+        )
         self.db.commit()
 
     def get_meta(self, key: str) -> str | None:
@@ -74,6 +82,7 @@ class Store:
         cutoff = _utc(now - keep)
         self.db.execute("DELETE FROM handled WHERE at < ?", (cutoff,))
         self.db.execute("DELETE FROM reminders WHERE created < ? AND snooze_until IS NULL", (cutoff,))
+        self.db.execute("DELETE FROM proposals WHERE created < ?", (cutoff,))
         self.db.commit()
 
     # --- reminders / snooze
@@ -113,6 +122,38 @@ class Store:
             (_utc(now),),
         ).fetchall()
         return [self._reminder(r) for r in rows]
+
+    # --- proposed events (Telegram -> calendar)
+
+    def add_proposal(self, payload: dict, now: datetime) -> int:
+        cur = self.db.execute(
+            "INSERT INTO proposals (payload, created) VALUES (?, ?)",
+            (json.dumps(payload), _utc(now)),
+        )
+        self.db.commit()
+        return cur.lastrowid
+
+    def get_proposal(self, ref: int) -> tuple[dict, str | None, str | None] | None:
+        """(payload, calendar_id, event_id); the last two are set once created."""
+        row = self.db.execute(
+            "SELECT payload, calendar_id, event_id FROM proposals WHERE id = ?", (ref,)
+        ).fetchone()
+        return (json.loads(row[0]), row[1], row[2]) if row else None
+
+    def update_proposal(self, ref: int, payload: dict) -> None:
+        self.db.execute("UPDATE proposals SET payload = ? WHERE id = ?", (json.dumps(payload), ref))
+        self.db.commit()
+
+    def drop_proposal(self, ref: int) -> None:
+        self.db.execute("DELETE FROM proposals WHERE id = ?", (ref,))
+        self.db.commit()
+
+    def mark_created(self, ref: int, calendar_id: str | None, event_id: str | None) -> None:
+        self.db.execute(
+            "UPDATE proposals SET calendar_id = ?, event_id = ? WHERE id = ?",
+            (calendar_id, event_id, ref),
+        )
+        self.db.commit()
 
     @staticmethod
     def _reminder(row) -> Reminder:

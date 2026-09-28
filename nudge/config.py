@@ -30,6 +30,30 @@ class MorningConfig:
 
 
 @dataclass(frozen=True)
+class ClaudeConfig:
+    """Parsing free text into events (nudge.parse)."""
+
+    api_key: str | None = None
+    model: str = "claude-opus-5-5"
+    workspace_id: str | None = None  # only for org-level keys (wrkspc_...)
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.api_key)
+
+
+@dataclass(frozen=True)
+class CreateConfig:
+    """Events created from Telegram."""
+
+    enabled: bool = True
+    default_calendar: str | None = None  # Family
+    alt_calendar: str | None = None  # Personal
+    duration: timedelta = timedelta(minutes=30)
+    reminder_minutes: int = 10
+
+
+@dataclass(frozen=True)
 class Config:
     calendars: list[str]
     poll: timedelta
@@ -39,6 +63,8 @@ class Config:
     telegram_chat_id: int | str | None = None
     emoji: EmojiRules = field(default_factory=EmojiRules)
     morning: MorningConfig = field(default_factory=lambda: MorningConfig())
+    claude: ClaudeConfig = field(default_factory=ClaudeConfig)
+    create: CreateConfig = field(default_factory=CreateConfig)
 
 
 def load(path: Path = CONFIG_FILE) -> Config:
@@ -87,6 +113,25 @@ def load(path: Path = CONFIG_FILE) -> Config:
         tag=m.get("tag", "#nonudge"),
     )
 
+    claude_cfg = raw.get("claude", {})
+    api_key = claude_cfg.get("api_key")
+    if api_key and (api_key.startswith("PASTE") or not api_key.startswith("sk-")):
+        raise ConfigError(f"{path}: claude.api_key doesn't look like an API key")
+    claude = ClaudeConfig(
+        api_key=api_key,
+        model=claude_cfg.get("model", "claude-opus-5-5"),
+        workspace_id=claude_cfg.get("workspace_id"),
+    )
+
+    c = raw.get("create", {})
+    create = CreateConfig(
+        enabled=c.get("enabled", True),
+        default_calendar=c.get("default_calendar"),
+        alt_calendar=c.get("alt_calendar"),
+        duration=timedelta(minutes=c.get("duration_minutes", 30)),
+        reminder_minutes=c.get("reminder_minutes", 10),
+    )
+
     return Config(
         calendars=calendars,
         poll=timedelta(minutes=raw.get("poll_minutes", 5)),
@@ -96,4 +141,6 @@ def load(path: Path = CONFIG_FILE) -> Config:
         telegram_chat_id=chat_id,
         emoji=emoji,
         morning=morning,
+        claude=claude,
+        create=create,
     )

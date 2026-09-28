@@ -12,7 +12,10 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar.readonly",  # events, calendar list, settings
+    "https://www.googleapis.com/auth/calendar.events",  # create/delete events from Telegram
+]
 def _config_dir() -> Path:
     """Where config.toml, credentials.json, token.json and state.db live.
 

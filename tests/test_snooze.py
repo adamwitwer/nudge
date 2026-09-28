@@ -41,7 +41,7 @@ def sent_reminder(store, api, title="Dentist"):
 
 def tap(store, action, ref, now=NOW, chat=CHAT):
     cq = {"id": "cq1", "data": f"{action}:{ref}", "message": {"message_id": 1, "chat": {"id": chat}}}
-    snooze.handle_callback(TelegramBot("1:x", CHAT), store, cq, now, NY)
+    snooze.handle_callback(TelegramBot("1:x", CHAT), _runtime(store), cq, now)
 
 
 def test_reminder_gets_three_buttons(api):
@@ -138,9 +138,17 @@ def test_socket_timeout_becomes_a_telegram_error(monkeypatch):
     assert "getUpdates" in str(e.value) and "1:x" not in str(e.value)
 
 
+def _runtime(store=None, svc=None):
+    from nudge.config import Config
+    from nudge.runtime import Runtime
+
+    cfg = Config(calendars=["cal"], poll=timedelta(minutes=5), grace=timedelta(minutes=15), discord_webhook_url=None)
+    return Runtime(cfg=cfg, store=store or Store(":memory:"), tz=NY, svc=svc)
+
+
 def test_listen_survives_a_failing_getupdates(monkeypatch):
     slept = []
     monkeypatch.setattr(snooze.time, "sleep", slept.append)
     monkeypatch.setattr(snooze, "call", lambda *a, **k: (_ for _ in ()).throw(telegram.TelegramError("down")))
-    snooze.listen(TelegramBot("1:x", CHAT), Store(":memory:"), NY, 30)  # must not raise
+    snooze.listen(TelegramBot("1:x", CHAT), _runtime(), 30)  # must not raise
     assert slept == [30]

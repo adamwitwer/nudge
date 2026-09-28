@@ -56,19 +56,21 @@ class TelegramBot:
         self.chat_id = chat_id
         self.update_offset = 0  # getUpdates cursor (see nudge.snooze)
 
-    def payload(self, text: str, ref: int | None = None) -> dict:
+    def payload(self, text: str, ref: int | None = None, reply_markup: dict | None = None) -> dict:
         p = {
             "chat_id": self.chat_id,
             "text": text,
             "parse_mode": "HTML",
             "link_preview_options": {"is_disabled": True},
         }
-        if ref is not None:
+        if reply_markup is not None:  # an explicit keyboard (e.g. a create preview)
+            p["reply_markup"] = reply_markup
+        elif ref is not None:  # a reminder: snooze buttons
             p["reply_markup"] = keyboard(ref)
         return p
 
-    def send(self, message: Message) -> None:
-        params = self.payload(as_html(message), message.ref)
+    def send(self, message: Message, reply_markup: dict | None = None) -> None:
+        params = self.payload(as_html(message), message.ref, reply_markup)
         for attempt in range(3):
             try:
                 call(self.token, "sendMessage", params)
