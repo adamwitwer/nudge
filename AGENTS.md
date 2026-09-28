@@ -35,7 +35,8 @@ off-Pi copy of `credentials.json` / `token.json`. Both are recoverable
 (re-download the client from Google Cloud, re-run `nudge auth`). Run CLI
 commands on the Pi.
 
-**Open:** the daily agenda digest is still an idea. (All-day `useDefault`
+**Open:** nothing queued. (The daily agenda digest shipped 2026-09-26, merged
+into the 8:30 morning brief.) (All-day `useDefault`
 was tested 2026-09-25 and needs no change; see the input log.) The user set
 default notifications on Personal on 2026-09-25: timed 10 min, all-day 1 day
 before at 9 AM. Transient network warnings (SSL EOF, getUpdates
