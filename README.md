@@ -49,6 +49,27 @@ just the notification check.
 • Wed Jan 20 · Adam and Jenny's anniversary (repeats)
 ```
 
+## Creating events from Telegram
+
+Type an event at the bot and it offers to add it:
+
+```
+you:   lunch w/ Sam next tues noon at Joe's, remind me 30 before
+nudge: 🍽️ Lunch w/ Sam at Joe's · Tue Oct 6 · 12:00 PM–12:30 PM
+       📅 Family · 🔔 popup 30 min
+       ℹ️ took "next tues" as Tuesday of next week
+       [✅ Create] [📅 Personal] [✖️ Cancel]
+```
+
+Claude parses the message (structured output, one call); nothing is written
+until you tap **Create**, and **↩️ Undo** deletes it again. Every created event
+gets a popup reminder, so nudge fires for what it made.
+
+Commands: `/next`, `/today`, `/help`.
+
+This needs an `[claude]` api_key in the config and the `calendar.events`
+scope, so re-run `nudge auth` after upgrading from a read-only install.
+
 ## Identity
 
 The avatar is `assets/avatar.svg`: an amber dot with two waves leaving it, on

@@ -11,42 +11,41 @@ configured list of calendars) and sends each event's **popup** reminders as
 Telegram messages (Discord is supported but retired) at the times set in GCal. The spec and plan
 are in `miniPRD.txt`, which is the source of truth for requirements.
 
-## Where we left off (2026-09-25)
+## Where we left off (2026-09-28)
 
-**Live on the Pi** (`nudge.service`), Telegram only. Week one of real use:
-every reminder delivered (Recycling Tue 19:00:17, Garbage Thu 19:00:08), and
-the 8:30 AM audit ran clean on the 23rd, 24th and 25th.
+**Live on the Pi** (`nudge.service`), Telegram only. Reminders + snooze +
+8:30 AM brief, and now **creating events from Telegram**: type an event at the
+bot, Claude parses it, a preview with [✅ Create] [📅 Personal] [✖️ Cancel]
+appears, and [↩️ Undo] deletes it again. Verified live 2026-09-28 (created
+"Test event" on Family, then undid it). Commands: `/next`, `/today`, `/help`.
 
-**Decided 2026-09-25:** Discord is retired. Its messages were redundant next
-to Telegram. The notifier stays in the code and `config.toml` keeps the
-webhook commented out (plus `config.toml.bak` on the Pi), so it is one
-uncomment away. `config.example.toml` has Discord commented out too.
+**New pieces:** `nudge/commands.py` (router), `nudge/parse.py` (one Claude
+call, structured output), `nudge/create.py` (preview/confirm/write/undo, the
+only code that writes to Google), `nudge/runtime.py` (Runtime passed to the
+Telegram listener), `proposals` table in the store. Scope is now
+`calendar.readonly` + `calendar.events`; the token on both Macs and the Pi was
+re-issued 2026-09-28.
 
-**Fixed 2026-09-25:** the service crashed twice overnight (09-23 18:06,
-09-24 04:38; systemd restarted it 10 s later, nothing was missed). A bare
-`TimeoutError` from the Telegram long-poll escaped `telegram.call`, which
-only caught `TelegramError`. Now `call` converts `TimeoutError`/`OSError`,
-and the tick body has a last-resort `except Exception` that logs and
-continues. Regression tests in `tests/test_snooze.py`.
+**Claude setup:** `[claude] api_key` in config.toml, model `claude-opus-5-5`,
+~0.5 cent and 2.5-5 s per parse. The user's key is **org-level**, so
+`claude.workspace_id` (`wrkspc_...`) is required - without it the API returns
+400 "not scoped to a workspace". Without an api_key nudge stays read-only.
 
-**Note:** `~/.config/nudge/` exists on BOTH Macs (same `credentials.json` as
-the Pi, verified 2026-09-28), so `nudge auth` and other CLI commands can run
-on a Mac and the resulting `token.json` copied to the Pi. The service itself
-still runs only on the Pi.
-
-**Open:** nothing queued. (The daily agenda digest shipped 2026-09-26, merged
-into the 8:30 morning brief.) (All-day `useDefault`
-was tested 2026-09-25 and needs no change; see the input log.) The user set
-default notifications on Personal on 2026-09-25: timed 10 min, all-day 1 day
-before at 9 AM. Transient network warnings (SSL EOF, getUpdates
-"Network is unreachable") appear a few times a day and are handled.
+**Ideas not built yet:** a dead-man's switch (an outside heartbeat like
+healthchecks.io, so a dead Pi is noticed - the biggest remaining gap),
+snooze presets tuned to real use ("this evening", "tomorrow 8am"),
+location/Meet lines for events that have them, `#emoji:` overrides,
+editing/deleting existing events from Telegram.
 
 ## Working agreements
 
 - Keep it simple. This is a personal tool, not a platform. Prefer the stdlib
   and a few dependencies over frameworks.
 - **Public repo: never commit secrets.** OAuth client secrets, `token.json`,
-  webhook URLs, bot tokens, chat IDs, and real calendar IDs stay out of git.
+  webhook URLs, bot tokens, chat IDs, Anthropic API keys, and real calendar
+  IDs stay out of git. Never print config.toml or a key to the terminal
+  either (it happened once, 2026-09-28; the key was rotated) - check secrets
+  with a boolean, e.g. `print(bool(cfg.claude.api_key))`.
   Never print the Telegram token: it's embedded in API URLs, so keep URLs
   out of errors and logs.
   Commit `config.example.toml` only.
@@ -80,6 +79,9 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-28 | Event creation from Telegram shipped (Claude parse -> preview -> create -> undo). Gotchas: an org-level Anthropic key needs `anthropic-workspace-id`; the SDK logs every request at INFO (silenced); Telegram `sendChatAction` covers the 2.5-5 s parse. | done |
+| 2026-09-28 | **Deploy hazard, hit once:** copying `config.toml` from a Mac to the Pi silently re-enabled Discord (the Mac copy still had the webhook). Diff the two before `scp`, or keep the retired block commented in both. | done (both configs now match) |
+| 2026-09-28 | A dead Pi is still invisible: no reminders and no alert. Recommended an external heartbeat (healthchecks.io) as the next piece of work. | open |
 | 2026-09-25 | Week-one review of the journal caught two silent crashes that the user hadn't noticed (uncaught socket timeout in the long-poll). Worth re-reading `journalctl -u nudge` for `NRestarts` and WARNING lines whenever the user reports back. | done |
 | 2026-09-25 | Discord retired after the trial; Telegram only. Kept the notifier and a commented config block rather than deleting, so it can come back. | adopted |
 | 2026-09-22 | Identity: the user picked the "Ping" concept (amber dot + two waves) from four; the disc went deep indigo #231F5E so the circle keeps its edge on dark chat backgrounds. Gotcha: **ImageMagick cannot render stroked paths or SVG arcs** (it drew only the fills), so `rsvg-convert` (brew librsvg) renders the PNGs. Discord webhook PATCH needs a `User-Agent` header or Cloudflare returns 403 code 1010. | done |

@@ -12,15 +12,13 @@ The messages would need to be nicely formatted and might include emoji and other
 PROJECT PLAN  (drafted 2026-09-21)
 ================================================================================
 
-STATUS (2026-09-25): Live on the Pi (nudge.service). Telegram-only, with a
-daily 8:30 AM brief (agenda + audit). Earlier status: sending to Telegram
-(Discord retired after the trial, still supported in code), with keyword
-emoji, snooze buttons, and a daily 8:30 AM "missing notification" audit.
-First week of real use: every reminder delivered; two crashes from an
-uncaught socket timeout, now fixed. M0-M4 are done. The first live reminder (9:50 AM, 2026-09-22) was
-delivered. Telegram was added the same day. Next: an app identity (logo/avatar
-for Telegram and Discord), then decide which destination(s) to keep after
-the trial week (about 2026-09-29).
+STATUS (2026-09-28): Live on the Pi (nudge.service), Telegram only (Discord
+retired after the trial, still supported in code). Reminders with keyword
+emoji and snooze buttons, an 8:30 AM brief (today's agenda + missing-popup
+audit), and - new - creating events by typing them at the bot: parsed by the
+Claude API, confirmed with buttons, undoable. M0-M4 done; week one of real
+use delivered every reminder (two crashes from an uncaught socket timeout,
+fixed 2026-09-25).
 Repo: https://github.com/adamwitwer/nudge
 
 1. FEASIBILITY SUMMARY
@@ -153,6 +151,12 @@ Package layout (run as `python -m nudge <command>`):
   nudge/engine.py       service loop
   nudge/agenda.py       today's events, for the morning brief
   nudge/audit.py        events with no popup notification
+  nudge/commands.py     /next, /today, /help; plain text -> event proposal
+  nudge/parse.py        one Claude call (structured output) -> ParsedEvent,
+                        resolved into a Proposal (datetimes, calendar id)
+  nudge/create.py       preview -> Create / swap calendar / Cancel -> Undo;
+                        the only code that writes to Google Calendar
+  nudge/runtime.py      Runtime(cfg, store, tz, svc) for the Telegram side
   nudge/morning.py      the 8:30 AM brief: agenda + audit in one message
   nudge/snooze.py       Telegram button taps (long-poll getUpdates in place
                         of the tick sleep), snooze re-sends
@@ -188,8 +192,8 @@ Service loop:
   Time zone:                taken from the Google account setting, not from
                             each calendar (the Family calendar is set to UTC).
 
-Config and secrets (config.toml, with the Discord webhook and Telegram bot
-token + chat_id; credentials.json, token.json, state.db),
+Config and secrets (config.toml, with the Telegram bot
+token + chat_id and the Anthropic API key; credentials.json, token.json, state.db),
 in lookup order:
   1. $NUDGE_CONFIG_DIR
   2. the project folder, if it contains config.toml (the Pi: ~/Projects/nudge)
@@ -271,7 +275,30 @@ M5  Hardening / extensions (as needed)
       (2026-09-22). Snoozed reminders re-send to Telegram only.
     - [x] Emoji keyword rules (2026-09-22)
 
-7. RISKS
+7. WRITING EVENTS (2026-09-28)
+------------------------------
+Scope: calendar.readonly + calendar.events. The token can now change the
+calendar, so every write sits behind a confirmation button.
+
+Flow: message -> parse.ask (Claude, structured output: title, date, time,
+duration, reminder, calendar, note, plus understood/problem) -> to_proposal
+(resolves dates in the account tz, applies defaults, clamps the reminder to
+GCal's 4-week max) -> stored proposal + preview message -> [Create] inserts
+with a popup override -> [Undo] deletes. Cancel drops the draft so a stale
+button can't write it; creating twice is a no-op.
+
+Defaults: Family calendar (the preview's button swaps to Personal), 30 min
+duration, 10 min popup. Model claude-opus-5-5, about half a cent per event;
+2.5-5 s per parse, so the bot shows "typing..." meanwhile. Without an
+[claude] api_key nudge stays read-only and says so.
+
+Verified live 2026-09-28: "test event thursday 4pm" -> created on Family
+(Thu Oct 1, 4:00-4:30 PM, popup 10 min) -> Undo removed it.
+
+Not done: editing or deleting existing events (only Undo of a just-created
+one), recurring events, attendees, structured locations.
+
+8. RISKS
 --------
 - Refresh token revoked or expired -> handled: Discord alert, re-run
   `nudge auth`. The consent screen is In production, so there's no 7-day
@@ -282,6 +309,14 @@ M5  Hardening / extensions (as needed)
 - Home network outage -> late or skipped reminders. The grace window limits
   the damage. Acceptable for a personal tool.
 - Two machines running `nudge run` -> duplicate messages. Only the Pi runs it.
+- The write scope means a bug could change the calendar. Mitigated by
+  confirmation before every write, Undo, and create-only behaviour: nudge
+  never edits or deletes an event it didn't just make.
+- Anthropic API key lives in config.toml; rotate it in the console if it
+  leaks. An org-level key (not workspace-scoped) also needs
+  claude.workspace_id.
+- Deploying by copying config.toml between machines can silently re-enable a
+  retired notifier (it did, 2026-09-28). Diff before copying.
 - An unhandled exception in the tick used to kill the service (a bare
   TimeoutError from the Telegram long-poll, twice in week one). Fixed:
   telegram.call converts TimeoutError/OSError, and the tick has a last-resort
