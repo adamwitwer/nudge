@@ -19,6 +19,10 @@ class FakeBot:
 
     def __init__(self):
         self.sent = []
+        self.typed = 0
+
+    def typing(self):
+        self.typed += 1
 
     def send(self, message):
         self.sent.append(as_html(message))
@@ -108,8 +112,9 @@ def test_plain_text_is_proposed(rt, monkeypatch):
     rt.cfg = dc_replace(rt.cfg, claude=ClaudeConfig(api_key="sk-ant-test"))
     seen = []
     monkeypatch.setattr(commands.create, "propose", lambda bot, rt, text, now: seen.append(text))
-    commands.dispatch(FakeBot(), rt, message("dentist thursday 3pm"))
-    assert seen == ["dentist thursday 3pm"]
+    bot = FakeBot()
+    commands.dispatch(bot, rt, message("dentist thursday 3pm"))
+    assert seen == ["dentist thursday 3pm"] and bot.typed == 1
 
 
 def test_parse_failure_is_reported(rt, monkeypatch):

@@ -59,6 +59,7 @@ def _propose(bot, rt: Runtime, text: str) -> None:
         bot.send(format.Message("Event creation isn't set up", emoji="🤔",
                                 sections=((None, tuple(HELP.split("\n"))),)))
         return
+    bot.typing()  # parsing takes a few seconds
     try:
         create.propose(bot, rt, text, datetime.now(timezone.utc))
     except ParseError as e:

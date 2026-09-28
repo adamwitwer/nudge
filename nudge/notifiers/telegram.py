@@ -69,6 +69,13 @@ class TelegramBot:
             p["reply_markup"] = keyboard(ref)
         return p
 
+    def typing(self) -> None:
+        """Show "typing…" in the chat. Best-effort: never fails a reply."""
+        try:
+            call(self.token, "sendChatAction", {"chat_id": self.chat_id, "action": "typing"})
+        except TelegramError:
+            pass
+
     def send(self, message: Message, reply_markup: dict | None = None) -> None:
         params = self.payload(as_html(message), message.ref, reply_markup)
         for attempt in range(3):
