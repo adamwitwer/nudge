@@ -29,11 +29,10 @@ only caught `TelegramError`. Now `call` converts `TimeoutError`/`OSError`,
 and the tick body has a last-resort `except Exception` that logs and
 continues. Regression tests in `tests/test_snooze.py`.
 
-**Note:** `~/.config/nudge/` no longer exists on the dev Mac (the user
-cleaned it up), so Mac-side `nudge` commands won't run and there is no
-off-Pi copy of `credentials.json` / `token.json`. Both are recoverable
-(re-download the client from Google Cloud, re-run `nudge auth`). Run CLI
-commands on the Pi.
+**Note:** `~/.config/nudge/` exists on BOTH Macs (same `credentials.json` as
+the Pi, verified 2026-09-28), so `nudge auth` and other CLI commands can run
+on a Mac and the resulting `token.json` copied to the Pi. The service itself
+still runs only on the Pi.
 
 **Open:** nothing queued. (The daily agenda digest shipped 2026-09-26, merged
 into the 8:30 morning brief.) (All-day `useDefault`
