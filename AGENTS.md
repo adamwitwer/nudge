@@ -37,7 +37,8 @@ systemd watchdog (`Type=notify`, `WatchdogSec=120`, sd_notify from
 `nudge/health.py`), and `/health` in Telegram. The watchdog was verified by
 SIGSTOPping the process: killed and restarted two minutes later.
 
-**Ideas not built yet:** snooze presets tuned to real use ("this evening",
+**Ideas not built yet:** reply-to-amend (see the input log: designed, parked
+on purpose), snooze presets tuned to real use ("this evening",
 "tomorrow 8am"), location/Meet lines for events that have them, `#emoji:`
 overrides in a description, editing or deleting existing events from Telegram
 (only Undo today).
@@ -88,6 +89,8 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-29 | Title rule tightened: the model was dropping intent verbs ("Schedule HVAC maintenance with Mannix" -> "HVAC maintenance with Mannix") and explaining the edit in the note. The prompt now says to keep the sender's words, only fixing capitals. Checked against 5 real phrasings. | done |
+| 2026-09-29 | Follow-up corrections don't work: each message is parsed alone, so "It is a task to book the appointment" was rejected for having no date. Designed **reply-to-amend** (Telegram `reply_to_message` -> revise the stored proposal -> `events.patch` for an already-created event, ~100 lines + an edit write path). **Deliberately not built:** the user prefers to re-send and Undo. Build it only when they say they want to adjust existing events (times more than titles). | open: decided to wait |
 | 2026-09-29 | Dead-man's switch shipped: healthchecks.io heartbeat + systemd watchdog + `/health`. Watchdog proven with SIGSTOP (2 min to restart). | done |
 | 2026-09-29 | **Deploy lesson:** a `sed`/replace against an import line silently missed (the line had changed in another session), every unit test still passed, and the service crash-looped on the Pi. `run()` is now covered by a smoke test, and a deploy is not done until `systemctl is-active` plus a fresh log line are checked. | done |
 | 2026-09-28 | Event creation from Telegram shipped (Claude parse -> preview -> create -> undo). Gotchas: an org-level Anthropic key needs `anthropic-workspace-id`; the SDK logs every request at INFO (silenced); Telegram `sendChatAction` covers the 2.5-5 s parse. | done |
