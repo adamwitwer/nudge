@@ -22,6 +22,7 @@ NEXT_COUNT = 3
 HELP = (
     "Type an event (\"dentist thursday 3pm\") and I'll offer to add it\n"
     "/next — the next few events\n"
+    "/health — is everything working?\n"
     "/today — today's agenda\n"
     "/help — this message"
 )
@@ -44,6 +45,8 @@ def dispatch(bot, rt: Runtime, message: dict) -> None:
         bot.send(next_message(rt))
     elif command in ("today", "agenda"):
         bot.send(today_message(rt))
+    elif command in ("health", "status"):
+        bot.send(health_message(rt))
     elif command in ("help", "start"):
         bot.send(format.Message("nudge", emoji="👋", sections=((None, tuple(HELP.split("\n"))),)))
     elif command:
@@ -67,6 +70,27 @@ def _propose(bot, rt: Runtime, text: str) -> None:
     except Exception as e:
         log.warning("propose failed: %s", e)
         bot.send(format.Message("Something went wrong reading that", type(e).__name__, emoji="⚠️"))
+
+
+def health_message(rt: Runtime, now: datetime | None = None) -> format.Message:
+    """Answered only if nudge is alive, so it complements the heartbeat."""
+    now = now or datetime.now(timezone.utc)
+    lines = []
+
+    last = rt.store.get_meta("last_poll")
+    if last:
+        ago = int((now - datetime.fromisoformat(last)).total_seconds() // 60)
+        lines.append(f"🔄 last checked the calendar {ago} min ago")
+    started = rt.store.get_meta("started")
+    if started:
+        up = now - datetime.fromisoformat(started)
+        days, hours = up.days, up.seconds // 3600
+        lines.append(f"⏱️ running for {days}d {hours}h" if days else f"⏱️ running for {hours}h {(up.seconds // 60) % 60}m")
+    lines.append(f"🔔 {rt.store.get_meta('upcoming') or '?'} reminders ahead")
+    lines.append(f"📅 {len(rt.cfg.calendars)} calendars · ✍️ event creation "
+                 + ("on" if rt.cfg.create.enabled and rt.cfg.claude.enabled else "off"))
+    lines.append("💓 heartbeat " + ("on" if rt.cfg.health.ping_url else "off"))
+    return format.Message("All good", emoji="✅", sections=((None, tuple(lines)),))
 
 
 def upcoming(rt: Runtime, now: datetime, days: int = NEXT_DAYS, limit: int = NEXT_COUNT) -> list[agenda.Item]:

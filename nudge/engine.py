@@ -77,6 +77,9 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
     svc = tz = None
     rt: Runtime | None = None
     bots = [n for n in notifiers if getattr(n, "supports_actions", False)]
+    started = datetime.now(timezone.utc)
+    store.set_meta("started", started.isoformat())
+    health.notify("READY=1")  # Type=notify; the watchdog starts counting now
 
     while True:
         now = datetime.now(timezone.utc)
@@ -90,10 +93,15 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
                 last_poll = now
                 auth_alerted = False
                 store.prune(now)
-                log.info("polled: %d upcoming popup triggers", sum(t.fire_at > now for t in triggers))
+                upcoming = sum(t.fire_at > now for t in triggers)
+                store.set_meta("last_poll", now.isoformat())
+                store.set_meta("upcoming", str(upcoming))
+                health.ping(cfg.health.ping_url)  # "still alive" to the outside world
+                log.info("polled: %d upcoming popup triggers", upcoming)
             except (gcal.AuthError, RefreshError) as e:  # refresh can also fail mid-run
                 log.error("%s", e)
                 if not auth_alerted:
+                    health.ping(cfg.health.ping_url, "/fail")
                     _alert(notifiers, format.Message(
                         "nudge can't read Google Calendar",
                         f"re-run: python -m nudge auth ({e})",
@@ -104,12 +112,14 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
                 last_poll = now  # retry on the next poll interval, not every tick
             except Exception as e:  # network blips etc.: keep the last good trigger list
                 log.warning("poll failed: %s", e)
+                health.ping(cfg.health.ping_url, "/fail")
                 last_poll = now
             if svc is not None and tz is not None and morning.is_due(cfg.morning, store, now, tz):
                 try:
                     morning.run(cfg.morning, svc, cfg.calendars, notifiers, store, now, tz, cfg.emoji)
                 except Exception as e:  # not marked done; retried next poll
                     log.warning("morning brief failed: %s", e)
+        health.notify("WATCHDOG=1")  # a wedged loop stops this and systemd restarts us
         try:
             if tz is not None:
                 process_due(triggers, store, notifiers, now, tz, cfg.grace, cfg.emoji)

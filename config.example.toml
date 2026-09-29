@@ -60,3 +60,10 @@ default_calendar = "xxxxxxxxxxxxxxxx@group.calendar.google.com"
 alt_calendar = "you@gmail.com"   # the 📅 button on the preview switches to this
 # duration_minutes = 30          # when no end time is given
 # reminder_minutes = 10          # popup added to every created event
+
+[health]
+# healthchecks.io (or similar) ping URL. nudge pings it after every successful
+# poll, and pings <url>/fail when a poll fails. If the pings stop, that service
+# alerts you — the only check that survives the Pi losing power.
+# Suggested check settings: period 5 minutes, grace 15 minutes.
+ping_url = "https://hc-ping.com/..."

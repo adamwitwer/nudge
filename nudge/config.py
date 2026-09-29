@@ -54,6 +54,13 @@ class CreateConfig:
 
 
 @dataclass(frozen=True)
+class HealthConfig:
+    """Outside heartbeat (healthchecks.io or similar)."""
+
+    ping_url: str | None = None
+
+
+@dataclass(frozen=True)
 class Config:
     calendars: list[str]
     poll: timedelta
@@ -65,6 +72,7 @@ class Config:
     morning: MorningConfig = field(default_factory=lambda: MorningConfig())
     claude: ClaudeConfig = field(default_factory=ClaudeConfig)
     create: CreateConfig = field(default_factory=CreateConfig)
+    health: HealthConfig = field(default_factory=HealthConfig)
 
 
 def load(path: Path = CONFIG_FILE) -> Config:
@@ -132,6 +140,11 @@ def load(path: Path = CONFIG_FILE) -> Config:
         reminder_minutes=c.get("reminder_minutes", 10),
     )
 
+    ping_url = raw.get("health", {}).get("ping_url")
+    if ping_url and not ping_url.startswith("https://"):
+        raise ConfigError(f"{path}: health.ping_url doesn't look like a URL")
+    health = HealthConfig(ping_url=ping_url)
+
     return Config(
         calendars=calendars,
         poll=timedelta(minutes=raw.get("poll_minutes", 5)),
@@ -143,4 +156,5 @@ def load(path: Path = CONFIG_FILE) -> Config:
         morning=morning,
         claude=claude,
         create=create,
+        health=health,
     )

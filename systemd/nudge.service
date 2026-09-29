@@ -1,10 +1,14 @@
 [Unit]
-Description=nudge (GCal popup reminders -> Discord/Telegram)
+Description=nudge (GCal reminders + event creation, via Telegram)
 After=network-online.target time-sync.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+# notify + WatchdogSec: nudge pings systemd each tick, so a wedged loop
+# (not just a crash) gets restarted. See nudge/health.py.
+Type=notify
+NotifyAccess=main
+WatchdogSec=120
 User=adam
 WorkingDirectory=/home/adam/Projects/nudge
 ExecStart=/home/adam/Projects/nudge/venv/bin/python -m nudge run
