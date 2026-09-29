@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from google.auth.exceptions import RefreshError
 
-from . import format, gcal, morning, snooze
+from . import format, gcal, health, morning, snooze
 from .config import Config
 from .notifiers import Notifier
 from .runtime import Runtime

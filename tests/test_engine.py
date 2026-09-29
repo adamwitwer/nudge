@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from nudge.engine import process_due
 from nudge.format import as_markdown
 from nudge.notifiers.discord import DiscordWebhook
@@ -77,3 +79,54 @@ def test_telegram_payload_uses_html_without_previews():
     p = TelegramBot("123:abc", 42).payload("<b>x</b>")
     assert p["chat_id"] == 42 and p["parse_mode"] == "HTML"
     assert p["link_preview_options"] == {"is_disabled": True}
+
+
+class _Stop(Exception):
+    """Breaks out of engine.run's infinite loop after one tick."""
+
+
+def test_run_does_a_full_tick(monkeypatch):
+    """Smoke test for run() itself: imports, heartbeat, watchdog, poll.
+
+    A missing `health` import once got past every other test and crash-looped
+    the service on the Pi (2026-09-29), because nothing exercised run().
+    """
+    from nudge import engine, gcal, health
+    from nudge.config import Config, HealthConfig
+
+    pings, notifications = [], []
+    monkeypatch.setattr(gcal, "service", lambda: object())
+    monkeypatch.setattr(gcal, "user_timezone", lambda svc: "America/New_York")
+    monkeypatch.setattr(engine, "collect_triggers", lambda *a, **k: [])
+    monkeypatch.setattr(health, "ping", lambda url, suffix="": pings.append((url, suffix)))
+    monkeypatch.setattr(health, "notify", lambda state: notifications.append(state))
+    monkeypatch.setattr(engine.time, "sleep", lambda s: (_ for _ in ()).throw(_Stop()))
+
+    cfg = Config(calendars=["cal"], poll=timedelta(minutes=5), grace=timedelta(minutes=15),
+                 discord_webhook_url=None, health=HealthConfig(ping_url="https://hc-ping.com/x"))
+    store = Store(":memory:")
+    with pytest.raises(_Stop):
+        engine.run(cfg, [], store)
+
+    assert notifications == ["READY=1", "WATCHDOG=1"]
+    assert pings == [("https://hc-ping.com/x", "")]  # one "alive" ping, no /fail
+    assert store.get_meta("last_poll") and store.get_meta("upcoming") == "0"
+
+
+def test_run_pings_fail_when_the_poll_breaks(monkeypatch):
+    from nudge import engine, gcal, health
+    from nudge.config import Config, HealthConfig
+
+    pings = []
+    monkeypatch.setattr(gcal, "service", lambda: object())
+    monkeypatch.setattr(gcal, "user_timezone", lambda svc: "America/New_York")
+    monkeypatch.setattr(engine, "collect_triggers", lambda *a, **k: 1 / 0)
+    monkeypatch.setattr(health, "ping", lambda url, suffix="": pings.append(suffix))
+    monkeypatch.setattr(health, "notify", lambda state: None)
+    monkeypatch.setattr(engine.time, "sleep", lambda s: (_ for _ in ()).throw(_Stop()))
+
+    cfg = Config(calendars=["cal"], poll=timedelta(minutes=5), grace=timedelta(minutes=15),
+                 discord_webhook_url=None, health=HealthConfig(ping_url="https://hc-ping.com/x"))
+    with pytest.raises(_Stop):
+        engine.run(cfg, [], Store(":memory:"))
+    assert pings == ["/fail"]
