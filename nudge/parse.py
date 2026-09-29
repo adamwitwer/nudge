@@ -54,8 +54,10 @@ Rules:
   reminder lead time; otherwise null.
 - calendar: "family" unless the message says it is personal, private, or just
   for the sender.
-- title: the event itself, sentence case, without the date, time or reminder
-  words. Keep the sender's own wording where you can.
+- title: the sender's own words, minus the date, time and reminder phrases.
+  Keep their verbs and nouns as typed ("Schedule X", "Call Y", "Book Z"):
+  never reword, shorten, or reinterpret what kind of thing it is. Capitalize
+  the first word and any proper nouns; leave the rest as written.
 - If there is no clear event, or no date can be worked out, set
   understood=false and say why in problem.
 - note: anything you assumed or dropped, in a few words; otherwise null."""
