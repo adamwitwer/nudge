@@ -70,6 +70,14 @@ Commands: `/next`, `/today`, `/help`.
 This needs an `[claude]` api_key in the config and the `calendar.events`
 scope, so re-run `nudge auth` after upgrading from a read-only install.
 
+## Staying alive
+
+nudge pings a [healthchecks.io](https://healthchecks.io) check after every
+successful poll (`[health] ping_url`), so a Pi that loses power is noticed by
+something that isn't the Pi. The systemd unit is `Type=notify` with
+`WatchdogSec=120`, so a wedged loop gets restarted, not just a crashed one.
+`/health` in Telegram reports last poll, uptime and what's enabled.
+
 ## Identity
 
 The avatar is `assets/avatar.svg`: an amber dot with two waves leaving it, on

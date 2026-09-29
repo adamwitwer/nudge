@@ -31,11 +31,16 @@ re-issued 2026-09-28.
 `claude.workspace_id` (`wrkspc_...`) is required - without it the API returns
 400 "not scoped to a workspace". Without an api_key nudge stays read-only.
 
-**Ideas not built yet:** a dead-man's switch (an outside heartbeat like
-healthchecks.io, so a dead Pi is noticed - the biggest remaining gap),
-snooze presets tuned to real use ("this evening", "tomorrow 8am"),
-location/Meet lines for events that have them, `#emoji:` overrides,
-editing/deleting existing events from Telegram.
+**Liveness (2026-09-29):** three layers - healthchecks.io ping after every
+successful poll (`[health] ping_url`, `/fail` on a failed poll or auth error),
+systemd watchdog (`Type=notify`, `WatchdogSec=120`, sd_notify from
+`nudge/health.py`), and `/health` in Telegram. The watchdog was verified by
+SIGSTOPping the process: killed and restarted two minutes later.
+
+**Ideas not built yet:** snooze presets tuned to real use ("this evening",
+"tomorrow 8am"), location/Meet lines for events that have them, `#emoji:`
+overrides in a description, editing or deleting existing events from Telegram
+(only Undo today).
 
 ## Working agreements
 
@@ -69,6 +74,10 @@ editing/deleting existing events from Telegram.
   `.pth` as hidden, and Python then skips it. pytest sets `pythonpath = ["."]`,
   and `python -m nudge` works from the repo root regardless.
 - Run `pytest` before every commit.
+- After a string-replace edit, verify the change actually landed (grep for it)
+  - a missed replace is silent. Unit tests don't import `engine.run`'s
+  startup path end to end, so also check `systemctl is-active nudge` and a
+  fresh journal line after every deploy.
 - When a requirement changes, update `miniPRD.txt` section 3 as well as the
   code.
 
@@ -79,6 +88,8 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-29 | Dead-man's switch shipped: healthchecks.io heartbeat + systemd watchdog + `/health`. Watchdog proven with SIGSTOP (2 min to restart). | done |
+| 2026-09-29 | **Deploy lesson:** a `sed`/replace against an import line silently missed (the line had changed in another session), every unit test still passed, and the service crash-looped on the Pi. `run()` is now covered by a smoke test, and a deploy is not done until `systemctl is-active` plus a fresh log line are checked. | done |
 | 2026-09-28 | Event creation from Telegram shipped (Claude parse -> preview -> create -> undo). Gotchas: an org-level Anthropic key needs `anthropic-workspace-id`; the SDK logs every request at INFO (silenced); Telegram `sendChatAction` covers the 2.5-5 s parse. | done |
 | 2026-09-28 | **Deploy hazard, hit once:** copying `config.toml` from a Mac to the Pi silently re-enabled Discord (the Mac copy still had the webhook). Diff the two before `scp`, or keep the retired block commented in both. | done (both configs now match) |
 | 2026-09-28 | A dead Pi is still invisible: no reminders and no alert. Recommended an external heartbeat (healthchecks.io) as the next piece of work. | open |

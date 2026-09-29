@@ -298,7 +298,24 @@ Verified live 2026-09-28: "test event thursday 4pm" -> created on Family
 Not done: editing or deleting existing events (only Undo of a just-created
 one), recurring events, attendees, structured locations.
 
-8. RISKS
+8. STAYING ALIVE (2026-09-29)
+-----------------------------
+Three layers, because each catches a different failure:
+
+1. Outside heartbeat. After every successful poll nudge GETs the
+   healthchecks.io ping URL ([health] ping_url); a failed poll or a Google
+   auth error pings <url>/fail. Check settings: period 5 min, grace 15 min.
+   This is the only layer that survives the Pi losing power or the house
+   losing internet, because the alarm lives off the Pi. Pings never raise.
+2. systemd watchdog. The unit is Type=notify with WatchdogSec=120; nudge
+   sends READY=1 at startup and WATCHDOG=1 each 30 s tick. A wedged loop
+   (alive but stuck) is killed and restarted, which Restart=always alone
+   does not do. Verified 2026-09-29 by SIGSTOPping the process: frozen
+   17:09:48, watchdog fired 17:11:39, polling again 17:11:49.
+3. /health in Telegram: last poll, uptime, upcoming count, what's enabled.
+   Only answers when nudge is alive, so it complements (1).
+
+9. RISKS
 --------
 - Refresh token revoked or expired -> handled: Discord alert, re-run
   `nudge auth`. The consent screen is In production, so there's no 7-day
