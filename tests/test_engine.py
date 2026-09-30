@@ -113,7 +113,9 @@ def test_run_does_a_full_tick(monkeypatch):
     assert store.get_meta("last_poll") and store.get_meta("upcoming") == "0"
 
 
-def test_run_pings_fail_when_the_poll_breaks(monkeypatch):
+def test_a_transient_poll_failure_does_not_ping_fail(monkeypatch):
+    """One SSL blip is not an outage: it recovers next poll, and sustained
+    failure already shows up as missing "alive" pings (2026-09-30)."""
     from nudge import engine, gcal, health
     from nudge.config import Config, HealthConfig
 
@@ -121,6 +123,24 @@ def test_run_pings_fail_when_the_poll_breaks(monkeypatch):
     monkeypatch.setattr(gcal, "service", lambda: object())
     monkeypatch.setattr(gcal, "user_timezone", lambda svc: "America/New_York")
     monkeypatch.setattr(engine, "collect_triggers", lambda *a, **k: 1 / 0)
+    monkeypatch.setattr(health, "ping", lambda url, suffix="": pings.append(suffix))
+    monkeypatch.setattr(health, "notify", lambda state: None)
+    monkeypatch.setattr(engine.time, "sleep", lambda s: (_ for _ in ()).throw(_Stop()))
+
+    cfg = Config(calendars=["cal"], poll=timedelta(minutes=5), grace=timedelta(minutes=15),
+                 discord_webhook_url=None, health=HealthConfig(ping_url="https://hc-ping.com/x"))
+    with pytest.raises(_Stop):
+        engine.run(cfg, [], Store(":memory:"))
+    assert pings == []
+
+
+def test_auth_failure_does_ping_fail(monkeypatch):
+    """This one needs a human, so page immediately."""
+    from nudge import engine, gcal, health
+    from nudge.config import Config, HealthConfig
+
+    pings = []
+    monkeypatch.setattr(gcal, "service", lambda: (_ for _ in ()).throw(gcal.AuthError("token revoked")))
     monkeypatch.setattr(health, "ping", lambda url, suffix="": pings.append(suffix))
     monkeypatch.setattr(health, "notify", lambda state: None)
     monkeypatch.setattr(engine.time, "sleep", lambda s: (_ for _ in ()).throw(_Stop()))

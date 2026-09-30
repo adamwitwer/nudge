@@ -66,11 +66,18 @@ def message(text, chat=CHAT):
 
 
 def test_next_lists_upcoming_and_skips_started(rt):
+    # A fixed `now`: the fixture's events are dated, so a real clock would
+    # age this test out (it did, 2026-09-30).
+    out = as_html(commands.next_message(rt, NOW))
+    assert "Dentist" not in out  # already started
+    assert "Recycling" in out and "Garbage" in out
+
+
+def test_next_command_routes_to_next_message(rt, monkeypatch):
+    monkeypatch.setattr(commands, "next_message", lambda rt, now=None: commands.format.Message("stub"))
     bot = FakeBot()
     commands.dispatch(bot, rt, message("/next"))
-    (out,) = bot.sent
-    assert "Dentist" not in out
-    assert "Recycling" in out and "Garbage" in out
+    assert "stub" in bot.sent[0]
 
 
 def test_next_wording_is_relative(rt):

@@ -89,6 +89,8 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-09-30 | **False outage:** `/fail` was pinged on *any* poll exception, so a single transient SSL EOF (18:06, one of several a day) reported the service down while it had been up 25 h with 0 restarts. Now only auth errors ping `/fail`; transient failures rely on the 15-min grace. | done |
+| 2026-09-30 | Test rot: `test_next_lists_upcoming_and_skips_started` used the real clock against fixture events with fixed dates and started failing a day later. Time-dependent tests take an explicit `now`. | done |
 | 2026-09-29 | Title rule tightened: the model was dropping intent verbs ("Schedule HVAC maintenance with Mannix" -> "HVAC maintenance with Mannix") and explaining the edit in the note. The prompt now says to keep the sender's words, only fixing capitals. Checked against 5 real phrasings. | done |
 | 2026-09-29 | Follow-up corrections don't work: each message is parsed alone, so "It is a task to book the appointment" was rejected for having no date. Designed **reply-to-amend** (Telegram `reply_to_message` -> revise the stored proposal -> `events.patch` for an already-created event, ~100 lines + an edit write path). **Deliberately not built:** the user prefers to re-send and Undo. Build it only when they say they want to adjust existing events (times more than titles). | open: decided to wait |
 | 2026-09-29 | Dead-man's switch shipped: healthchecks.io heartbeat + systemd watchdog + `/health`. Watchdog proven with SIGSTOP (2 min to restart). | done |

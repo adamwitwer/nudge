@@ -101,7 +101,7 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
             except (gcal.AuthError, RefreshError) as e:  # refresh can also fail mid-run
                 log.error("%s", e)
                 if not auth_alerted:
-                    health.ping(cfg.health.ping_url, "/fail")
+                    health.ping(cfg.health.ping_url, "/fail")  # needs a human: re-run nudge auth
                     _alert(notifiers, format.Message(
                         "nudge can't read Google Calendar",
                         f"re-run: python -m nudge auth ({e})",
@@ -111,8 +111,10 @@ def run(cfg: Config, notifiers: list[Notifier], store: Store) -> None:
                 svc = None
                 last_poll = now  # retry on the next poll interval, not every tick
             except Exception as e:  # network blips etc.: keep the last good trigger list
+                # No /fail ping: these are transient (an SSL EOF a few times a
+                # day) and recover on the next poll. Sustained failure shows up
+                # anyway, as the absence of "alive" pings.
                 log.warning("poll failed: %s", e)
-                health.ping(cfg.health.ping_url, "/fail")
                 last_poll = now
             if svc is not None and tz is not None and morning.is_due(cfg.morning, store, now, tz):
                 try:

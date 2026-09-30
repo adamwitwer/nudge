@@ -303,8 +303,11 @@ one), recurring events, attendees, structured locations.
 Three layers, because each catches a different failure:
 
 1. Outside heartbeat. After every successful poll nudge GETs the
-   healthchecks.io ping URL ([health] ping_url); a failed poll or a Google
-   auth error pings <url>/fail. Check settings: period 5 min, grace 15 min.
+   healthchecks.io ping URL ([health] ping_url). Only a Google auth error
+   pings <url>/fail - that needs a human. A transient poll failure pings
+   nothing: it recovers on the next poll, and sustained failure already
+   shows as the absence of "alive" pings (2026-09-30: one SSL EOF pinged
+   /fail and reported a false outage). Check settings: period 5 min, grace 15 min.
    This is the only layer that survives the Pi losing power or the house
    losing internet, because the alarm lives off the Pi. Pings never raise.
 2. systemd watchdog. The unit is Type=notify with WatchdogSec=120; nudge
