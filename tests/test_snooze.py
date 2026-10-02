@@ -152,3 +152,41 @@ def test_listen_survives_a_failing_getupdates(monkeypatch):
     monkeypatch.setattr(snooze, "call", lambda *a, **k: (_ for _ in ()).throw(telegram.TelegramError("down")))
     snooze.listen(TelegramBot("1:x", CHAT), _runtime(), 30)  # must not raise
     assert slept == [30]
+
+
+def test_repeat_tap_is_not_a_failure(monkeypatch):
+    """A second Done tap from a stale phone view gets HTTP 400 "message is
+    not modified" from editMessageText; that's harmless (2026-10-01)."""
+    calls = []
+
+    def fake_call(token, method, params=None, timeout=10):
+        calls.append(method)
+        if method == "editMessageText":
+            raise telegram.TelegramError(
+                "Telegram editMessageText failed: HTTP 400 Bad Request: message is not modified: "
+                "specified new message content and reply markup are exactly the same"
+            )
+        return {"message_id": 1} if method == "sendMessage" else True
+
+    monkeypatch.setattr(telegram, "call", fake_call)
+    monkeypatch.setattr(snooze, "call", fake_call)
+    store = Store(":memory:")
+    t = Trigger("cal", "e1", "Garbage", NOW + timedelta(minutes=10), False, 10, NOW)
+    process_due([t], store, [TelegramBot("1:x", CHAT)], NOW, NY, timedelta(minutes=15))
+    tap(store, "done", 1)  # must not raise
+    assert calls[-2:] == ["answerCallbackQuery", "editMessageText"]
+
+
+def test_other_edit_errors_still_raise(monkeypatch):
+    def fake_call(token, method, params=None, timeout=10):
+        if method == "editMessageText":
+            raise telegram.TelegramError("Telegram editMessageText failed: HTTP 400 Bad Request: message to edit not found")
+        return {"message_id": 1} if method == "sendMessage" else True
+
+    monkeypatch.setattr(telegram, "call", fake_call)
+    monkeypatch.setattr(snooze, "call", fake_call)
+    store = Store(":memory:")
+    t = Trigger("cal", "e1", "Garbage", NOW + timedelta(minutes=10), False, 10, NOW)
+    process_due([t], store, [TelegramBot("1:x", CHAT)], NOW, NY, timedelta(minutes=15))
+    with pytest.raises(telegram.TelegramError):
+        tap(store, "done", 1)

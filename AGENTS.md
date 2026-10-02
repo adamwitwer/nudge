@@ -89,6 +89,7 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-10-01 | "Done just spun" on a reminder: not a Pi or network fault. The first tap worked server-side but the phone never showed the edit, so a second tap hit Telegram's 400 "message is not modified", which was logged as a WARNING "button tap failed". That 400 is now ignored (logged at INFO). Phone-side stale views can't be fixed from our end. | done |
 | 2026-09-30 | **False outage:** `/fail` was pinged on *any* poll exception, so a single transient SSL EOF (18:06, one of several a day) reported the service down while it had been up 25 h with 0 restarts. Now only auth errors ping `/fail`; transient failures rely on the 15-min grace. | done |
 | 2026-09-30 | Test rot: `test_next_lists_upcoming_and_skips_started` used the real clock against fixture events with fixed dates and started failing a day later. Time-dependent tests take an explicit `now`. | done |
 | 2026-09-29 | Title rule tightened: the model was dropping intent verbs ("Schedule HVAC maintenance with Mannix" -> "HVAC maintenance with Mannix") and explaining the edit in the note. The prompt now says to keep the sender's words, only fixing capitals. Checked against 5 real phrasings. | done |

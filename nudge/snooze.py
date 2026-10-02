@@ -89,9 +89,23 @@ def handle_callback(bot: TelegramBot, rt: Runtime, cq: dict, now: datetime) -> N
     text = format.as_html(reminder.message) + (f"\n{note}" if note else "") if reminder else None
     params = {"chat_id": bot.chat_id, "message_id": msg.get("message_id")}
     if text:  # editing the text without reply_markup also removes the buttons
-        call(bot.token, "editMessageText", {**params, "text": text, "parse_mode": "HTML"})
+        _edit(bot, "editMessageText", {**params, "text": text, "parse_mode": "HTML"})
     else:
-        call(bot.token, "editMessageReplyMarkup", params)
+        _edit(bot, "editMessageReplyMarkup", params)
+
+
+def _edit(bot: TelegramBot, method: str, params: dict) -> None:
+    """Edit a message, ignoring "message is not modified".
+
+    That 400 means the edit already happened: a second tap from a phone
+    whose view hadn't refreshed (seen 2026-10-01). Not a failure.
+    """
+    try:
+        call(bot.token, method, params)
+    except TelegramError as e:
+        if "message is not modified" not in str(e):
+            raise
+        log.info("button tap: message already up to date")
 
 
 def _handle_create(bot: TelegramBot, rt: Runtime, action: str, ref: str, cq: dict, now: datetime) -> None:
@@ -112,7 +126,7 @@ def _handle_create(bot: TelegramBot, rt: Runtime, action: str, ref: str, cq: dic
                   "text": format.as_html(message), "parse_mode": "HTML"}
         if keyboard is not None:
             params["reply_markup"] = keyboard
-        call(bot.token, "editMessageText", params)
+        _edit(bot, "editMessageText", params)
 
 
 def fire_due(bots: list[TelegramBot], store: Store, now: datetime, tz: ZoneInfo) -> None:
