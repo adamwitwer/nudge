@@ -77,6 +77,7 @@ def handle_callback(bot: TelegramBot, rt: Runtime, cq: dict, now: datetime) -> N
     elif action == "done":
         store.set_snooze(reminder.id, None)
         toast, note = "Done", "✅ <i>Done</i>"
+        log.info("done %r", reminder.message.title)
     else:
         until = now + SNOOZES[action]
         store.set_snooze(reminder.id, until)

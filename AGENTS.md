@@ -38,8 +38,7 @@ systemd watchdog (`Type=notify`, `WatchdogSec=120`, sd_notify from
 SIGSTOPping the process: killed and restarted two minutes later.
 
 **Ideas not built yet:** reply-to-amend (see the input log: designed, parked
-on purpose), snooze presets tuned to real use ("this evening",
-"tomorrow 8am"), location/Meet lines for events that have them, `#emoji:`
+on purpose), location/Meet lines for events that have them, `#emoji:`
 overrides in a description, editing or deleting existing events from Telegram
 (only Undo today).
 
@@ -89,6 +88,7 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-10-01 | Snooze presets ("this evening", "tomorrow 8am") dropped from the ideas list: the user rarely snoozes and finds 10 min / 1 hour enough. Done taps are now logged too, so a repeat tap can be told apart from the first. | declined (presets) / done (logging) |
 | 2026-10-01 | "Done just spun" on a reminder: not a Pi or network fault. The first tap worked server-side but the phone never showed the edit, so a second tap hit Telegram's 400 "message is not modified", which was logged as a WARNING "button tap failed". That 400 is now ignored (logged at INFO). Phone-side stale views can't be fixed from our end. | done |
 | 2026-09-30 | **False outage:** `/fail` was pinged on *any* poll exception, so a single transient SSL EOF (18:06, one of several a day) reported the service down while it had been up 25 h with 0 restarts. Now only auth errors ping `/fail`; transient failures rely on the 15-min grace. | done |
 | 2026-09-30 | Test rot: `test_next_lists_upcoming_and_skips_started` used the real clock against fixture events with fixed dates and started failing a day later. Time-dependent tests take an explicit `now`. | done |
@@ -98,7 +98,7 @@ first. Status is one of: open / adopted / declined / done.
 | 2026-09-29 | **Deploy lesson:** a `sed`/replace against an import line silently missed (the line had changed in another session), every unit test still passed, and the service crash-looped on the Pi. `run()` is now covered by a smoke test, and a deploy is not done until `systemctl is-active` plus a fresh log line are checked. | done |
 | 2026-09-28 | Event creation from Telegram shipped (Claude parse -> preview -> create -> undo). Gotchas: an org-level Anthropic key needs `anthropic-workspace-id`; the SDK logs every request at INFO (silenced); Telegram `sendChatAction` covers the 2.5-5 s parse. | done |
 | 2026-09-28 | **Deploy hazard, hit once:** copying `config.toml` from a Mac to the Pi silently re-enabled Discord (the Mac copy still had the webhook). Diff the two before `scp`, or keep the retired block commented in both. | done (both configs now match) |
-| 2026-09-28 | A dead Pi is still invisible: no reminders and no alert. Recommended an external heartbeat (healthchecks.io) as the next piece of work. | open |
+| 2026-09-28 | A dead Pi is still invisible: no reminders and no alert. Recommended an external heartbeat (healthchecks.io) as the next piece of work. | done (shipped 2026-09-29) |
 | 2026-09-25 | Week-one review of the journal caught two silent crashes that the user hadn't noticed (uncaught socket timeout in the long-poll). Worth re-reading `journalctl -u nudge` for `NRestarts` and WARNING lines whenever the user reports back. | done |
 | 2026-09-25 | Discord retired after the trial; Telegram only. Kept the notifier and a commented config block rather than deleting, so it can come back. | adopted |
 | 2026-09-22 | Identity: the user picked the "Ping" concept (amber dot + two waves) from four; the disc went deep indigo #231F5E so the circle keeps its edge on dark chat backgrounds. Gotcha: **ImageMagick cannot render stroked paths or SVG arcs** (it drew only the fills), so `rsvg-convert` (brew librsvg) renders the PNGs. Discord webhook PATCH needs a `User-Agent` header or Cloudflare returns 403 code 1010. | done |
@@ -120,4 +120,4 @@ first. Status is one of: open / adopted / declined / done.
 | 2026-09-21 | Put a Notifier interface in front of Discord and Telegram and implement both. Each is about 30 lines. Telegram if phone push reliability matters most, Discord for richer formatting. | adopted: Discord first, Telegram later |
 | 2026-09-21 | Add an alert (via the notifier) when Google auth fails, so the service can't die silently. | done (engine.py) |
 | 2026-09-21 | Make sure NTP time sync is on for the Pi (it has no RTC). | done (NTPSynchronized=yes) |
-| 2026-09-21 | A daily "today's agenda" digest message would fit well later. | open (idea) |
+| 2026-09-21 | A daily "today's agenda" digest message would fit well later. | done (the 8:30 AM brief) |
