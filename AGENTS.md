@@ -88,6 +88,7 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
+| 2026-10-01 | Google Tasks support: **not needed.** The user's "tasks" are ordinary calendar events (e.g. "Flowers for Jenny"), which nudge already handles. If Google Tasks is ever wanted: the API has only a due date (no time, no reminders), so the 8:30 brief is the place for it, not timed nudges; it also needs a new scope and a re-auth. | declined |
 | 2026-10-01 | Snooze presets ("this evening", "tomorrow 8am") dropped from the ideas list: the user rarely snoozes and finds 10 min / 1 hour enough. Done taps are now logged too, so a repeat tap can be told apart from the first. | declined (presets) / done (logging) |
 | 2026-10-01 | "Done just spun" on a reminder: not a Pi or network fault. The first tap worked server-side but the phone never showed the edit, so a second tap hit Telegram's 400 "message is not modified", which was logged as a WARNING "button tap failed". That 400 is now ignored (logged at INFO). Phone-side stale views can't be fixed from our end. | done |
 | 2026-09-30 | **False outage:** `/fail` was pinged on *any* poll exception, so a single transient SSL EOF (18:06, one of several a day) reported the service down while it had been up 25 h with 0 restarts. Now only auth errors ping `/fail`; transient failures rely on the 15-min grace. | done |
