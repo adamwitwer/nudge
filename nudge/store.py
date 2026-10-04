@@ -16,6 +16,7 @@ from typing import NamedTuple
 
 from .format import Message
 from .gcal import CONFIG_DIR
+from .perms import keep_private
 from .triggers import Trigger
 
 DB_FILE = CONFIG_DIR / "state.db"
@@ -36,6 +37,7 @@ def _utc(dt: datetime) -> str:
 class Store:
     def __init__(self, path: Path | str = DB_FILE):
         self.db = sqlite3.connect(str(path))
+        keep_private(path)  # event titles and pending proposals
         self.db.execute(
             "CREATE TABLE IF NOT EXISTS handled ("
             " key TEXT PRIMARY KEY,"

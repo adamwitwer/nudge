@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .format import DEFAULT_KEYWORDS, EMOJI, EmojiRules
 from .gcal import CONFIG_DIR
+from .perms import keep_private
 
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 
@@ -78,6 +79,8 @@ class Config:
 def load(path: Path = CONFIG_FILE) -> Config:
     if not path.exists():
         raise ConfigError(f"Missing {path} (see config.example.toml)")
+    if path.name == "config.toml":  # not the example, which is meant to be public
+        keep_private(path)  # bot token and API key live here
     try:
         raw = tomllib.loads(path.read_text())
     except tomllib.TOMLDecodeError as e:

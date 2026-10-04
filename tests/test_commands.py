@@ -146,7 +146,11 @@ def test_other_chats_are_ignored(rt):
     assert bot.sent == []
 
 
-def test_command_with_bot_suffix(rt):
+def test_command_with_bot_suffix(rt, monkeypatch):
+    # dispatch() reads the real clock; pin it, or this fails on any day the
+    # fixture events don't fall on.
+    real = commands.today_message
+    monkeypatch.setattr(commands, "today_message", lambda rt, now=None: real(rt, NOW))
     bot = FakeBot()
     commands.dispatch(bot, rt, message("/today@adam_nudge_bot"))
     assert bot.sent and "Today" in bot.sent[0]
