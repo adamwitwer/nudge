@@ -11,7 +11,7 @@ configured list of calendars) and sends each event's **popup** reminders as
 Telegram messages (Discord is supported but retired) at the times set in GCal. The spec and plan
 are in `miniPRD.txt`, which is the source of truth for requirements.
 
-## Where we left off (2026-09-28)
+## Where we left off (2026-10-10)
 
 **Live on the Pi** (`nudge.service`), Telegram only. Reminders + snooze +
 8:30 AM brief, and now **creating events from Telegram**: type an event at the
@@ -36,6 +36,17 @@ successful poll (`[health] ping_url`, `/fail` on a failed poll or auth error),
 systemd watchdog (`Type=notify`, `WatchdogSec=120`, sd_notify from
 `nudge/health.py`), and `/health` in Telegram. The watchdog was verified by
 SIGSTOPping the process: killed and restarted two minutes later.
+
+**Power-outage nudge (2026-10-10):** `nudge send "Title" --detail ...` sends
+a one-off message with the snooze/Done buttons (`nudge/send.py`; `--quiet`
+holds a 10 PM-to-brief nudge until the brief time). `outage/watch.sh` runs on
+the **Plex-Mini** (macOS, Tailscale 100.123.45.48, UPS on USB) as the launchd
+agent `nudge.outage-watch`: on a switch to UPS power it runs `nudge send` on
+the Pi over ssh, and you get "⚡ Power outage at 2:14 PM · reset the clocks,
+gaming PC, and plant lamp timers". The Mini has **no git clone**: the script
+is a copy in `~/nudge-outage/`, so after editing it, `scp` it again and run
+`launchctl kickstart -k gui/$(id -u)/nudge.outage-watch` there. Its log is
+`~/Library/Logs/nudge-outage.log`. Details in `miniPRD.txt` section 10.
 
 **Ideas not built yet:** reply-to-amend (see the input log: designed, parked
 on purpose), location/Meet lines for events that have them, `#emoji:`
@@ -88,7 +99,7 @@ first. Status is one of: open / adopted / declined / done.
 
 | Date | Input | Status |
 |------|-------|--------|
-| 2026-10-10 | The user's idea: detect a brief power outage and nudge to reset clocks and plant-lamp timers. Opinion: fits **if split** - detection stays outside nudge (a UPS daemon hook or a small watcher), and nudge only gains a generic `nudge send "text"` (ad-hoc message with the snooze/Done buttons). The Pi can't see an outage (no UPS on USB, no apcupsd/NUT), but the **Plex-Mini** (macOS, 100.123.45.48) can: its CyberPower CP850PFCLCD is on USB and macOS reads it natively, so `pmset -g pslog` streams power-source changes with nothing to install. The Mini never sleeps, its router is on the same UPS, and it can already ssh to the Pi. **Plug-pull test 2026-10-10:** a ~10 s pull was reported as 12 s on UPS power and a ~2 s pull as 3 s, both within a second (shorter blips untested). Built: `nudge send` (`nudge/send.py`; `--quiet` holds a 10 PM-to-brief nudge until the brief time by storing it already snoozed; a `fixed` column on `reminders`, migrated on open, keeps its detail text on a snoozed re-send) and `outage/watch.sh` + launchd plist for the Mini. Also suggested moving the lamps to the user's spare smart plugs so only the clocks need a nudge. **Not deployed:** the Pi needs the update and the Mini needs the agent installed, then one more plug pull to prove the whole path. | open: built, not deployed |
+| 2026-10-10 | The user's idea: detect a brief power outage and nudge to reset clocks and plant-lamp timers. Opinion: fits **if split** - detection stays outside nudge (a UPS daemon hook or a small watcher), and nudge only gains a generic `nudge send "text"` (ad-hoc message with the snooze/Done buttons). The Pi can't see an outage (no UPS on USB, no apcupsd/NUT), but the **Plex-Mini** (macOS, 100.123.45.48) can: its CyberPower CP850PFCLCD is on USB and macOS reads it natively, so `pmset -g pslog` streams power-source changes with nothing to install. The Mini never sleeps, its router is on the same UPS, and it can already ssh to the Pi. **Plug-pull test 2026-10-10:** a ~10 s pull was reported as 12 s on UPS power and a ~2 s pull as 3 s, both within a second (shorter blips untested). Built: `nudge send` (`nudge/send.py`; `--quiet` holds a 10 PM-to-brief nudge until the brief time by storing it already snoozed; a `fixed` column on `reminders`, migrated on open, keeps its detail text on a snoozed re-send) and `outage/watch.sh` + launchd plist for the Mini. Also suggested moving the lamps to the user's spare smart plugs so only the clocks need a nudge. **Deployed 2026-10-10:** Pi updated (db migrated, service active), agent running on the Mini, and a labelled test nudge sent through the Mini-to-Pi ssh path arrived. Still to do: one real plug pull to prove the launchd agent fires end to end. | done (deployed); end-to-end plug pull pending |
 | 2026-10-04 | Security pass. Telegram handling was already sound: messages and taps are checked against `chat_id`, and `token.json` is chmodded on every save. Gap: nothing enforced the `chmod 600` that config.example.toml asks of `config.toml`. Both machines were already 600, but `state.db` (event titles, proposals) was 644. `nudge/perms.py` now tightens `config.toml` and `state.db` to 600 on open and logs when it had to. It never refuses to start: a loose file isn't worth a missed reminder. Also fixed `test_command_with_bot_suffix`, which read the real clock (same rot as 2026-09-30) and failed on days with no fixture events. | done |
 | 2026-10-01 | Google Tasks support: **not needed.** The user's "tasks" are ordinary calendar events (e.g. "Flowers for Jenny"), which nudge already handles. If Google Tasks is ever wanted: the API has only a due date (no time, no reminders), so the 8:30 brief is the place for it, not timed nudges; it also needs a new scope and a re-auth. | declined |
 | 2026-10-01 | Snooze presets ("this evening", "tomorrow 8am") dropped from the ideas list: the user rarely snoozes and finds 10 min / 1 hour enough. Done taps are now logged too, so a repeat tap can be told apart from the first. | declined (presets) / done (logging) |

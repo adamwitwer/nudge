@@ -375,3 +375,9 @@ reported as 12 s on UPS power and a ~2 s pull as 3 s, both within a
 second. Shorter blips are untested. Limits: it sees the Mini's outlet
 only (not a tripped breaker elsewhere), and a voltage sag can switch the
 UPS to battery without resetting any clock.
+
+Installed 2026-10-10 on the Plex-Mini (Tailscale 100.123.45.48) as the
+launchd agent `nudge.outage-watch`: script in ~/nudge-outage/, log in
+~/Library/Logs/nudge-outage.log. The Mini has no git clone, so an edited
+watch.sh is copied over again and the agent restarted with
+`launchctl kickstart -k gui/$(id -u)/nudge.outage-watch`.
