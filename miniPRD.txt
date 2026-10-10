@@ -381,3 +381,5 @@ launchd agent `nudge.outage-watch`: script in ~/nudge-outage/, log in
 ~/Library/Logs/nudge-outage.log. The Mini has no git clone, so an edited
 watch.sh is copied over again and the agent restarted with
 `launchctl kickstart -k gui/$(id -u)/nudge.outage-watch`.
+Proven end to end the same day: a plug pull at 1:37:13 PM produced the
+Telegram nudge. The 30-minute cooldown has only been dry-run.
