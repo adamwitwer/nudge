@@ -28,6 +28,7 @@ class Reminder(NamedTuple):
     start: datetime
     all_day: bool
     snooze_until: datetime | None
+    fixed: bool = False  # detail is fixed text (`nudge send`), not a lead time
 
 
 def _utc(dt: datetime) -> str:
@@ -50,8 +51,11 @@ class Store:
             " title TEXT NOT NULL, detail TEXT NOT NULL, emoji TEXT NOT NULL, late INTEGER NOT NULL,"
             " start TEXT NOT NULL, all_day INTEGER NOT NULL,"
             " snooze_until TEXT,"  # UTC ISO; NULL = no pending snooze
-            " created TEXT NOT NULL)"
+            " created TEXT NOT NULL,"
+            " fixed INTEGER NOT NULL DEFAULT 0)"
         )
+        if "fixed" not in [row[1] for row in self.db.execute("PRAGMA table_info(reminders)")]:
+            self.db.execute("ALTER TABLE reminders ADD COLUMN fixed INTEGER NOT NULL DEFAULT 0")  # pre-2026-10-10 db
         self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         self.db.execute(
             "CREATE TABLE IF NOT EXISTS proposals ("
@@ -89,12 +93,12 @@ class Store:
 
     # --- reminders / snooze
 
-    def add_reminder(self, trigger: Trigger, message: Message, now: datetime) -> int:
+    def add_reminder(self, trigger: Trigger, message: Message, now: datetime, fixed: bool = False) -> int:
         cur = self.db.execute(
-            "INSERT INTO reminders (title, detail, emoji, late, start, all_day, created)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO reminders (title, detail, emoji, late, start, all_day, created, fixed)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (message.title, message.detail, message.emoji, int(message.late),
-             trigger.start.isoformat(), int(trigger.all_day), _utc(now)),
+             trigger.start.isoformat(), int(trigger.all_day), _utc(now), int(fixed)),
         )
         self.db.commit()
         return cur.lastrowid
@@ -159,11 +163,12 @@ class Store:
 
     @staticmethod
     def _reminder(row) -> Reminder:
-        id_, title, detail, emoji, late, start, all_day, snooze_until, _ = row
+        id_, title, detail, emoji, late, start, all_day, snooze_until, _, fixed = row
         return Reminder(
             id=id_,
             message=Message(title, detail, bool(late), emoji, ref=id_),
             start=datetime.fromisoformat(start),
             all_day=bool(all_day),
             snooze_until=datetime.fromisoformat(snooze_until) if snooze_until else None,
+            fixed=bool(fixed),
         )

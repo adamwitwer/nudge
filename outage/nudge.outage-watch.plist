@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent for outage/watch.sh, on the Mac with the UPS. Install:
+    mkdir -p ~/nudge-outage && cp watch.sh ~/nudge-outage/
+    cp nudge.outage-watch.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/nudge.outage-watch.plist
+  Log: ~/Library/Logs/nudge-outage.log. The Mac needs an SSH key the Pi accepts.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>nudge.outage-watch</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>/Users/adam/nudge-outage/watch.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/adam/Library/Logs/nudge-outage.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/adam/Library/Logs/nudge-outage.log</string>
+</dict>
+</plist>

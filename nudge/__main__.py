@@ -1,4 +1,4 @@
-"""CLI: python -m nudge {auth,calendars,upcoming}"""
+"""CLI: python -m nudge {auth,calendars,upcoming,test,send,...}"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from . import agenda, audit, config, engine, format, gcal, morning, notifiers
+from . import agenda, audit, config, engine, format, gcal, morning, notifiers, send
 from .store import Store
 from .triggers import Trigger, triggers_for_event
 
@@ -80,6 +80,17 @@ def cmd_test(args) -> None:
     for n in ns:
         n.send(msg)
         print(f"sent via {n.name}: {msg.title} · {msg.detail}")
+
+
+def cmd_send(args) -> None:
+    """A one-off nudge, for scripts (e.g. outage/watch.sh). Run it on the Pi."""
+    cfg = config.load()
+    now = datetime.now().astimezone()  # the machine's local time, for --quiet
+    hold = send.hold_until(now, cfg.morning.at) if args.quiet else None
+    emoji = args.emoji or cfg.emoji.pick(args.title)
+    msg, held = send.send(_notifiers(cfg), Store(), args.title, args.detail, emoji, now, hold)
+    when = f"held until {format.clock(held)}" if held else "sent"
+    print(f"{when}: {msg.emoji} {msg.title}" + (f" · {msg.detail}" if msg.detail else ""))
 
 
 def _print(msg) -> None:
@@ -165,6 +176,14 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("test", help="send a sample notification")
     p.set_defaults(func=cmd_test)
+
+    p = sub.add_parser("send", help="send a one-off nudge with the snooze buttons (for scripts)")
+    p.add_argument("title")
+    p.add_argument("--detail", default="", help="text after the title")
+    p.add_argument("--emoji", help="default: picked from the title, like an event")
+    p.add_argument("--quiet", action="store_true",
+                   help="between 10 PM and the morning brief, hold it until the brief time")
+    p.set_defaults(func=cmd_send)
 
     p = sub.add_parser("audit", help="list upcoming events with no popup notification")
     p.add_argument("--days", type=int, help="look-ahead (default: audit.days, 14)")

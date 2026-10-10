@@ -135,7 +135,7 @@ def fire_due(bots: list[TelegramBot], store: Store, now: datetime, tz: ZoneInfo)
     for r in store.due_snoozes(now):
         msg = format.Message(
             r.message.title,
-            format.lead_text(r.start, r.all_day, now, tz),
+            r.message.detail if r.fixed else format.lead_text(r.start, r.all_day, now, tz),
             emoji=r.message.emoji,
             ref=r.id,
         )

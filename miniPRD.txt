@@ -111,7 +111,14 @@ Discord and want the richer visual formatting.
     "late"; otherwise skip and log. The Pi is expected to be always on.
 [x] Message content: event title only, to start. No description, location,
     or links. Keep it very simple.
-[x] Quiet hours: not needed.
+[x] Quiet hours: not needed for calendar reminders (their times are chosen
+    in GCal). One-off nudges from scripts can ask for it: see below.
+[x] One-off nudges (2026-10-10): `nudge send "title"` sends a message that
+    is not a calendar event, with the same snooze/Done buttons, so a script
+    can nudge. nudge itself learns nothing about the script's subject.
+    With --quiet, between 10 PM and the morning brief time it is held and
+    delivered at the brief time. First user: the power-outage watcher
+    (section 10).
 [x] Discord vs Telegram: RESOLVED 2026-09-25 after a trial. Telegram only;
     the Discord notifier stays in the code and is one uncommented config
     section away. Discord's messages were redundant.
@@ -133,7 +140,8 @@ Package layout (run as `python -m nudge <command>`):
   nudge/triggers.py     pure: event -> Trigger(start, fire_at, minutes_before,
                         key). Handles popup-only, useDefault, all-day
                         wall-clock math, DST, declined and cancelled events.
-  nudge/store.py        SQLite `reminders(id, content, start, snooze_until)`
+  nudge/store.py        SQLite `reminders(id, content, start, snooze_until,
+                        fixed)`
                         (the id is carried in Telegram button data) and
                         `handled(key, status sent|skipped, at)`,
                         pruned after 60 days.
@@ -160,10 +168,14 @@ Package layout (run as `python -m nudge <command>`):
   nudge/morning.py      the 8:30 AM brief: agenda + audit in one message
   nudge/snooze.py       Telegram button taps (long-poll getUpdates in place
                         of the tick sleep), snooze re-sends
-  nudge/__main__.py     CLI: auth | calendars | upcoming | test | morning |
-                        audit | telegram-chats | run
+  nudge/send.py         one-off nudges for scripts; --quiet stores them
+                        already snoozed, so the service delivers them
+  nudge/__main__.py     CLI: auth | calendars | upcoming | test | send |
+                        morning | audit | telegram-chats | run
   tests/                pytest: triggers, format, engine, config
   systemd/nudge.service
+  outage/               power-outage watcher for a Mac with a UPS on USB
+                        (not part of the package; see section 10)
 
 Service loop:
   every poll_minutes (5):   fetch events in [now - grace, now + 29 days]
@@ -341,3 +353,25 @@ Three layers, because each catches a different failure:
   TimeoutError from the Telegram long-poll, twice in week one). Fixed:
   telegram.call converts TimeoutError/OSError, and the tick has a last-resort
   guard that logs and continues.
+
+10. POWER-OUTAGE NUDGE (2026-10-10)
+-----------------------------------
+Brief outages reset the clocks and the plant-lamp timers, and the gaming PC
+needs resetting too. The lamps are the costly one: they stay dark until
+someone notices. The nudge lists all three:
+  ⚡ Power outage at 2:14 PM · reset the clocks, gaming PC, and plant lamp timers
+(the list is DETAIL at the top of outage/watch.sh). The Pi can't see an outage (it is on
+a UPS, with no data cable), but the Plex-Mini can: its CyberPower
+CP850PFCLCD is on USB and macOS reads it natively.
+
+outage/watch.sh runs on the Mini as a launchd agent. It reads
+`pmset -g pslog`, which prints a line when the power source changes, and
+on a switch to UPS power runs `nudge send ... --quiet` on the Pi over ssh
+(at most one per 30 minutes; five attempts a minute apart). The router is
+on the same UPS, so the network stays up during the outage.
+
+Tested 2026-10-10 by pulling the UPS's wall plug: a ~10 s pull was
+reported as 12 s on UPS power and a ~2 s pull as 3 s, both within a
+second. Shorter blips are untested. Limits: it sees the Mini's outlet
+only (not a tripped breaker elsewhere), and a voltage sag can switch the
+UPS to battery without resetting any clock.

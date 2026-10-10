@@ -78,6 +78,25 @@ something that isn't the Pi. The systemd unit is `Type=notify` with
 `WatchdogSec=120`, so a wedged loop gets restarted, not just a crashed one.
 `/health` in Telegram reports last poll, uptime and what's enabled.
 
+## One-off nudges and the power-outage watcher
+
+`nudge send "Title" --detail "more"` sends a message that isn't a calendar
+event, with the same snooze and Done buttons, so a script can nudge you.
+Run it on the machine that runs the service. With `--quiet`, a nudge sent
+between 10 PM and the morning brief time waits for the brief time.
+
+`outage/watch.sh` uses it. Brief power outages reset clocks and lamp
+timers, but a Pi on a UPS never notices one. A Mac with a UPS on USB does:
+the script reads `pmset -g pslog` and, when the Mac switches to UPS power,
+runs `nudge send` on the Pi over ssh (one nudge per 30 minutes at most):
+
+```
+⚡ **Power outage at 2:14 PM** · reset the clocks, gaming PC, and plant lamp timers
+```
+
+The list of things to reset is `DETAIL` at the top of the script.
+Install steps are in `outage/nudge.outage-watch.plist`.
+
 ## Identity
 
 The avatar is `assets/avatar.svg`: an amber dot with two waves leaving it, on
